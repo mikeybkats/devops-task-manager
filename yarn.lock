@@ -1100,6 +1100,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/dotenv@npm:^8.2.0":
+  version: 8.2.3
+  resolution: "@types/dotenv@npm:8.2.3"
+  dependencies:
+    dotenv: "npm:*"
+  checksum: 10c0/af9178da617959cddc8259aaa3f16c474523ead469f4a03490de2f2d1cafc8615c5d0d1ed3fad837096218126421c38cd46b4065548bb5aee3cc002c518b69f7
+  languageName: node
+  linkType: hard
+
 "@types/estree@npm:1.0.7, @types/estree@npm:^1.0.0, @types/estree@npm:^1.0.6":
   version: 1.0.7
   resolution: "@types/estree@npm:1.0.7"
@@ -2035,6 +2044,7 @@ __metadata:
     "@anthropic-ai/sdk": "npm:^0.51.0"
     "@azure/msal-node": "npm:^3.5.0"
     "@inquirer/prompts": "npm:^7.5.1"
+    "@types/dotenv": "npm:^8.2.0"
     "@types/inquirer": "npm:^9.0.7"
     "@types/node": "npm:^20.11.24"
     "@typescript-eslint/eslint-plugin": "npm:^7.1.0"
@@ -2045,6 +2055,7 @@ __metadata:
     chalk: "npm:^5.4.1"
     commander: "npm:^14.0.0"
     conf: "npm:^13.1.0"
+    dotenv: "npm:^16.4.5"
     esbuild: "npm:^0.20.2"
     eslint: "npm:^9.0.0"
     eslint-config-prettier: "npm:^9.1.0"
@@ -2101,6 +2112,13 @@ __metadata:
   dependencies:
     type-fest: "npm:^4.18.2"
   checksum: 10c0/4bac49a2f559156811862ac92813906f70529c50da918eaab81b38dd869743c667d578e183607f5ae11e8ae2a02e43e98e32c8a37bc4cae76b04d5b576e3112f
+  languageName: node
+  linkType: hard
+
+"dotenv@npm:*, dotenv@npm:^16.4.5":
+  version: 16.5.0
+  resolution: "dotenv@npm:16.5.0"
+  checksum: 10c0/5bc94c919fbd955bf0ba44d33922a1e93d1078e64a1db5c30faeded1d996e7a83c55332cb8ea4fae5a9ca4d0be44cbceb95c5811e70f9f095298df09d1997dd9
   languageName: node
   linkType: hard
 

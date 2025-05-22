@@ -5,6 +5,7 @@ import boxen from "boxen";
 import chalk from "chalk";
 import { select, input } from "@inquirer/prompts";
 import ora from "ora";
+import { getConfig } from "./config/env";
 
 const program = new Command();
 
@@ -45,23 +46,35 @@ const projectMenuOptions = [
 
 // Handle main menu selection
 async function handleMainMenu() {
-  const answer = await select({
-    message: "Choose an option:",
-    choices: mainMenuOptions,
-  });
+  try {
+    // Validate environment configuration
+    getConfig();
 
-  switch (answer) {
-    case "login":
-      await handleLogin();
-      break;
-    case "project":
-      await handleProjectSelection();
-      break;
-    case "exit":
-      process.exit(0);
-    default:
-      console.log(chalk.yellow("Please login first."));
-      await handleMainMenu();
+    const answer = await select({
+      message: "Choose an option:",
+      choices: mainMenuOptions,
+    });
+
+    switch (answer) {
+      case "login":
+        await handleLogin();
+        break;
+      case "project":
+        await handleProjectSelection();
+        break;
+      case "exit":
+        process.exit(0);
+      default:
+        console.log(chalk.yellow("Please login first."));
+        await handleMainMenu();
+    }
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error(chalk.red("Configuration Error:"), error.message);
+    } else {
+      console.error(chalk.red("An unexpected error occurred"));
+    }
+    process.exit(1);
   }
 }
 
