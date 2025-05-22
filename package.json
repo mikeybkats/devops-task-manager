@@ -1,0 +1,69 @@
+{
+  "name": "devops-task-manager",
+  "version": "1.0.0",
+  "description": "AI-powered DevOps task management CLI tool",
+  "main": "dist/index.js",
+  "bin": {
+    "devopsagent": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "yarn build:types && yarn build:js",
+    "build:js": "esbuild src/index.ts --bundle --platform=node --target=node18 --outfile=dist/index.js --format=cjs",
+    "build:types": "tsc --emitDeclarationOnly --outDir dist",
+    "build:watch": "esbuild src/index.ts --bundle --platform=node --target=node18 --outfile=dist/index.js --format=cjs --watch",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "test": "vitest",
+    "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint . --ext .ts",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "prepare": "husky install",
+    "clean": "rimraf dist",
+    "prebuild": "yarn clean",
+    "typecheck": "tsc --noEmit",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "validate": "yarn typecheck && yarn lint && yarn format:check && yarn test",
+    "prepublishOnly": "yarn validate && yarn build"
+  },
+  "keywords": [
+    "devops",
+    "cli",
+    "task-management",
+    "ai"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.51.0",
+    "@azure/msal-node": "^3.5.0",
+    "@inquirer/prompts": "^7.5.1",
+    "azure-devops-node-api": "^15.1.0",
+    "boxen": "^8.0.1",
+    "chalk": "^5.4.1",
+    "commander": "^14.0.0",
+    "conf": "^13.1.0",
+    "ora": "^8.2.0"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^9.0.7",
+    "@types/node": "^20.11.24",
+    "@typescript-eslint/eslint-plugin": "^7.1.0",
+    "@typescript-eslint/parser": "^7.1.0",
+    "@vitest/coverage-v8": "^1.3.1",
+    "esbuild": "^0.20.2",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-prettier": "^5.1.3",
+    "eslint-plugin-vitest-globals": "^1.5.0",
+    "husky": "^9.0.11",
+    "prettier": "^3.2.5",
+    "rimraf": "^5.0.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3",
+    "vitest": "^1.3.1"
+  },
+  "packageManager": "yarn@4.1.0"
+}
