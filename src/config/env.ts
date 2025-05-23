@@ -8,6 +8,7 @@ dotenv.config();
 export interface EnvConfig {
   anthropicApiKey: string;
   azureClientId: string;
+  azureTenantId: string;
   azureClientSecret: string;
   configDir?: string;
 }
@@ -16,11 +17,7 @@ export interface EnvConfig {
 function validateConfig(
   config: Partial<EnvConfig>,
 ): asserts config is EnvConfig {
-  const requiredVars = [
-    "anthropicApiKey",
-    "azureClientId",
-    "azureClientSecret",
-  ];
+  const requiredVars = ["anthropicApiKey", "azureClientId", "azureTenantId"];
   const missingVars = requiredVars.filter(
     (varName) => !config[varName as keyof EnvConfig],
   );
@@ -38,6 +35,7 @@ export function getConfig(): EnvConfig {
   const config: Partial<EnvConfig> = {
     anthropicApiKey: process.env.ANTHROPIC_API_KEY,
     azureClientId: process.env.AZURE_CLIENT_ID,
+    azureTenantId: process.env.AZURE_TENANT_ID,
     azureClientSecret: process.env.AZURE_CLIENT_SECRET,
     configDir: process.env.DEVOPS_AGENT_CONFIG_DIR,
   };

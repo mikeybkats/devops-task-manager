@@ -1,7 +1,4 @@
-import {
-  ConfidentialClientApplication,
-  AuthenticationResult,
-} from "@azure/msal-node";
+import { ConfidentialClientApplication } from "@azure/msal-node";
 import { ConfigService } from "./configService";
 import { AuthState, AuthToken } from "../models/config";
 
@@ -102,8 +99,17 @@ export class AuthService {
           ? {
               homeAccountId: authState.user.id,
               username: authState.user.email,
+              environment: "production",
+              tenantId: "common",
+              localAccountId: authState.user.id,
             }
-          : undefined,
+          : {
+              homeAccountId: "",
+              username: "",
+              environment: "production",
+              tenantId: "common",
+              localAccountId: "",
+            },
       });
 
       if (!result) {
