@@ -7,9 +7,9 @@ dotenv.config();
 // Configuration interface
 export interface EnvConfig {
   anthropicApiKey: string;
-  azureClientId: string;
-  azureTenantId: string;
-  azureClientSecret: string;
+  azurePat: string;
+  azureOrganization: string;
+  azureUsers: string[];
   configDir?: string;
 }
 
@@ -17,7 +17,7 @@ export interface EnvConfig {
 function validateConfig(
   config: Partial<EnvConfig>,
 ): asserts config is EnvConfig {
-  const requiredVars = ["anthropicApiKey", "azureClientId", "azureTenantId"];
+  const requiredVars = ["anthropicApiKey", "azurePat", "azureOrganization"];
   const missingVars = requiredVars.filter(
     (varName) => !config[varName as keyof EnvConfig],
   );
@@ -34,14 +34,18 @@ function validateConfig(
 export function getConfig(): EnvConfig {
   const config: Partial<EnvConfig> = {
     anthropicApiKey: process.env.ANTHROPIC_API_KEY,
-    azureClientId: process.env.AZURE_CLIENT_ID,
-    azureTenantId: process.env.AZURE_TENANT_ID,
-    azureClientSecret: process.env.AZURE_CLIENT_SECRET,
+    azurePat: process.env.AZURE_PAT,
+    azureOrganization: process.env.AZURE_ORGANIZATION,
+    azureUsers: process.env.AZURE_USERS
+      ? process.env.AZURE_USERS.split(",")
+          .map((u) => u.trim())
+          .filter(Boolean)
+      : [],
     configDir: process.env.DEVOPS_AGENT_CONFIG_DIR,
   };
 
   validateConfig(config);
-  return config;
+  return config as EnvConfig;
 }
 
 // Get the configuration directory path
