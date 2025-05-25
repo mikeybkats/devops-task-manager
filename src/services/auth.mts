@@ -1,7 +1,7 @@
-import { ConfigService } from "./configService";
-import { AuthState } from "../models/config";
-import { authConfig, PatConfig } from "./authConfig";
-import { getConfig } from "../config/env";
+import { ConfigService } from "./configService.mjs";
+import { AuthState } from "../models/config.js";
+import { authConfig, PatConfig } from "./authConfig.mjs";
+import { getConfig } from "../config/env.js";
 
 export class AuthService {
   private static instance: AuthService;

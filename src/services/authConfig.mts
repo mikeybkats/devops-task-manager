@@ -1,4 +1,4 @@
-import { EnvConfig } from "@/config/env";
+import { EnvConfig } from "../config/env.js";
 
 export interface PatConfig {
   pat: string;

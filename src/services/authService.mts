@@ -1,6 +1,6 @@
 import { ConfidentialClientApplication } from "@azure/msal-node";
-import { ConfigService } from "./configService";
-import { AuthState, AuthToken } from "../models/config";
+import { ConfigService } from "./configService.mjs";
+import { AuthState, AuthToken } from "../models/config.js";
 
 export class AuthService {
   private msalApp: ConfidentialClientApplication;
