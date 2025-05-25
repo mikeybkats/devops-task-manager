@@ -1,5 +1,5 @@
 import Conf from "conf";
-import { AppConfig, AuthState, Theme } from "../models/config.js";
+import { AppConfig, AuthState, Theme } from "../models/config";
 import crypto from "crypto";
 import os from "os";
 import path from "path";

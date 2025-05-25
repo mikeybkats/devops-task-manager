@@ -2,12 +2,9 @@ import boxen from "boxen";
 import chalk from "chalk";
 import { select, input } from "@inquirer/prompts";
 import ora from "ora";
-import { AuthService } from "../services/auth.mjs";
-import { fetchProjects, fetchWorkItems } from "../services/devops.mjs";
-import {
-  startElectronRenderer,
-  sendWorkItemsToRenderer,
-} from "../electron/launcher.mjs";
+import { AuthService } from "../services/auth";
+import { fetchProjects, fetchWorkItems } from "../services/devops";
+import { startElectronRenderer, sendWorkItemsToRenderer } from "./launcher";
 
 const authService = AuthService.getInstance();
 
@@ -175,17 +172,17 @@ async function handleCreateProject() {
         return true;
       },
     });
-    const description = await input({
-      message: "Project description (optional):",
-      default: "",
-    });
-    const visibility = await select({
-      message: "Project visibility:",
-      choices: [
-        { name: "Private", value: "private" },
-        { name: "Public", value: "public" },
-      ],
-    });
+    // const description = await input({
+    //   message: "Project description (optional):",
+    //   default: "",
+    // });
+    // const visibility = await select({
+    //   message: "Project visibility:",
+    //   choices: [
+    //     { name: "Private", value: "private" },
+    //     { name: "Public", value: "public" },
+    //   ],
+    // });
     const confirm = await select({
       message: "Create project with these settings?",
       choices: [

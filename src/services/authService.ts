@@ -1,6 +1,6 @@
 import { ConfidentialClientApplication } from "@azure/msal-node";
-import { ConfigService } from "./configService.mjs";
-import { AuthState, AuthToken } from "../models/config.js";
+import { ConfigService } from "./configService.js";
+import { AuthState, AuthToken } from "../models/config";
 
 export class AuthService {
   private msalApp: ConfidentialClientApplication;
@@ -77,7 +77,7 @@ export class AuthService {
     try {
       const authState = this.configService.getAuthState();
       if (authState.currentToken) {
-        await this.msalApp.clearCache();
+        this.msalApp.clearCache();
       }
       this.configService.clearAuthState();
     } catch (error) {

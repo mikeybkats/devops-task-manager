@@ -2809,7 +2809,7 @@ __metadata:
     webpack: "npm:^5.90.0"
     webpack-cli: "npm:^5.1.4"
   bin:
-    devopsagent: ./dist/index.js
+    devopsagent: ./dist/index.mjs
   languageName: unknown
   linkType: soft
 

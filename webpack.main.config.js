@@ -2,7 +2,7 @@ const path = require("path");
 
 module.exports = {
   mode: "production",
-  entry: path.resolve(__dirname, "src/index.mts"),
+  entry: path.resolve(__dirname, "src/index.ts"),
   target: "node",
   output: {
     path: path.resolve(__dirname, "dist"),
@@ -14,7 +14,8 @@ module.exports = {
     outputModule: true,
   },
   resolve: {
-    extensions: [".mts", ".mjs", ".ts", ".js", ".json"],
+    extensions: [".mts", ".ts", ".mjs", ".js", ".json"],
+    conditionNames: ["import", "require", "node"],
   },
   module: {
     rules: [
@@ -22,6 +23,10 @@ module.exports = {
         test: /\.(ts|mts)$/,
         use: "ts-loader",
         exclude: /node_modules/,
+      },
+      {
+        test: /\.mjs$/,
+        type: "javascript/esm",
       },
     ],
   },

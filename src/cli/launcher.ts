@@ -1,5 +1,10 @@
 import { spawn, ChildProcess } from "child_process";
 import path from "path";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 let electronProcess: ChildProcess | null = null;
 
@@ -11,7 +16,13 @@ export function startElectronRenderer() {
     ".bin",
     "electron",
   );
-  const mainPath = path.join(__dirname, "main.mjs");
+  const mainPath = path.join(
+    process.cwd(),
+    "dist",
+    "src",
+    "electron",
+    "main.js",
+  );
   electronProcess = spawn(electronBinary, [mainPath], {
     stdio: ["pipe", "pipe", "pipe", "ipc"],
     detached: true,

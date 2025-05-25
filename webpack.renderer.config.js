@@ -2,13 +2,15 @@ const path = require("path");
 
 module.exports = {
   mode: "production",
-  entry: path.resolve(__dirname, "src/electron/renderer.js"),
-  target: "web",
+  entry: {
+    renderer: path.resolve(__dirname, "src/electron/renderer.ts"),
+    main: path.resolve(__dirname, "src/electron/main.ts"),
+  },
+  target: "electron-main",
+
   output: {
     path: path.resolve(__dirname, "dist/src/electron"),
-    filename: "renderer.js",
     chunkFilename: "[name].chunk.js",
-    publicPath: "",
   },
   resolve: {
     extensions: [".js", ".ts", ".json"],
@@ -17,17 +19,16 @@ module.exports = {
     rules: [
       {
         test: /\.(js|ts)$/,
-        use: "babel-loader",
+        use: "ts-loader",
         exclude: /node_modules/,
       },
     ],
   },
-  optimization: {
-    splitChunks: {
-      chunks: "all",
-    },
-  },
   externals: {
-    electron: 'require("electron")',
+    electron: "require('electron')",
+  },
+  node: {
+    __dirname: false,
+    __filename: false,
   },
 };

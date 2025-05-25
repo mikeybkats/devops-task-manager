@@ -1,4 +1,4 @@
-import { getConfig } from "../config/env.js";
+import { getConfig } from "../config/env";
 
 export interface DevOpsProject {
   id: string;

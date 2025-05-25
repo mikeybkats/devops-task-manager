@@ -2,9 +2,9 @@
   "name": "devops-task-manager",
   "version": "1.0.0",
   "description": "AI-powered DevOps task management CLI tool",
-  "main": "dist/index.js",
+  "main": "dist/index.mjs",
   "bin": {
-    "devopsagent": "./dist/index.js"
+    "devopsagent": "./dist/index.mjs"
   },
   "scripts": {
     "build": "yarn build:types && yarn build:main && yarn build:renderer",
@@ -12,7 +12,7 @@
     "build:renderer": "webpack --config webpack.renderer.config.js",
     "build:types": "tsc --emitDeclarationOnly --outDir dist",
     "build:watch": "webpack --config webpack.main.config.js --watch & webpack --config webpack.renderer.config.js --watch",
-    "start": "node dist/index.js",
+    "start": "node dist/index.mjs",
     "test": "vitest",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
