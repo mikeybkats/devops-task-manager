@@ -1,7 +1,11 @@
 import { app, BrowserWindow } from "electron";
-import path from "path";
+import { ElectronCommands, ElectronRenderData } from "../types";
+import { WebSocketServer } from "ws";
 
 let mainWindow: BrowserWindow | null = null;
+
+console.log("Electron main process started");
+const wss = new WebSocketServer({ port: 8081 });
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -12,25 +16,42 @@ function createWindow() {
       contextIsolation: false,
     },
   });
-  mainWindow.loadFile(path.join(__dirname, "renderer.html"));
+  mainWindow.loadURL("about:blank");
+  mainWindow.webContents.openDevTools();
+  mainWindow.webContents.executeJavaScript(
+    'require("./dist/src/electron/renderer.js")',
+  );
 }
 
-app.whenReady().then(() => {
-  createWindow();
+wss.on("connection", (ws) => {
+  ws.on("message", (message: ElectronRenderData<ElectronCommands>) => {
+    if (!mainWindow) {
+      createWindow();
+    }
 
-  // Listen for work item data from the parent process
-  process.on("message", (msg: unknown) => {
-    if (
-      typeof msg === "object" &&
-      msg !== null &&
-      "type" in msg &&
-      (msg as any).type === "work-items" &&
-      mainWindow
-    ) {
-      mainWindow.webContents.send(
-        "work-items",
-        JSON.stringify((msg as any).data),
-      );
+    console.log("Received message from CLI:\n", message.type);
+
+    switch (message.type) {
+      case ElectronCommands.WORK_ITEMS:
+        mainWindow?.webContents.send(
+          ElectronCommands.WORK_ITEMS,
+          message.toString(),
+        );
+        break;
+      case ElectronCommands.CREATE_WINDOW:
+        createWindow();
+        break;
+      case ElectronCommands.IS_WINDOW_OPEN:
+        ws.send(
+          JSON.stringify({
+            type: ElectronCommands.IS_WINDOW_OPEN,
+            open: !!mainWindow,
+          }),
+        );
+        break;
+      default:
+        console.log("Unknown message type:", message.type);
+        break;
     }
   });
 });

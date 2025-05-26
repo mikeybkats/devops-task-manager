@@ -15,9 +15,10 @@
     "sourceMap": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "types": ["src/types/index.ts"]
     }
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "src/types/index.ts"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"]
 }

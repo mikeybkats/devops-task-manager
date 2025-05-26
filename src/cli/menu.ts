@@ -4,7 +4,11 @@ import { select, input } from "@inquirer/prompts";
 import ora from "ora";
 import { AuthService } from "../services/auth";
 import { fetchProjects, fetchWorkItems } from "../services/devops";
-import { startElectronRenderer, sendWorkItemsToRenderer } from "./launcher";
+import {
+  // sendWorkItemsToRenderer,
+  createElectronWindow,
+  isElectronWindowOpen,
+} from "./launcher";
 
 const authService = AuthService.getInstance();
 
@@ -138,8 +142,15 @@ async function handleViewWorkItems(type: string | null) {
     const spinner = ora("Fetching work items...").start();
     const items = await fetchWorkItems(userState.selectedProject, type);
     spinner.stop();
-    startElectronRenderer();
-    sendWorkItemsToRenderer(items);
+
+    const isOpen = await isElectronWindowOpen();
+    if (!isOpen) {
+      console.log(chalk.yellow("Creating Electron window..."));
+      createElectronWindow();
+    }
+
+    console.log(chalk.yellow("Sending work items to renderer..."));
+    // sendWorkItemsToRenderer(items);
   } catch (error) {
     console.error(
       chalk.red("Failed to fetch work items:"),

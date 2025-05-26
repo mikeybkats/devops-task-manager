@@ -1,16 +1,10 @@
+import { WorkItem } from "../types";
 import { getConfig } from "../config/env";
 
 export interface DevOpsProject {
   id: string;
   name: string;
   [key: string]: unknown;
-}
-
-export interface WorkItem {
-  title: string;
-  state: string;
-  assignedTo: string;
-  type: string;
 }
 
 export async function fetchProjects(): Promise<string[]> {

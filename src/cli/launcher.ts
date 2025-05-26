@@ -1,37 +1,51 @@
-import { spawn, ChildProcess } from "child_process";
-import path from "path";
-import { fileURLToPath } from "url";
-import { dirname } from "path";
+import { ElectronCommands, WorkItem } from "../types";
+import WebSocket from "ws";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const ws = new WebSocket("ws://localhost:8081");
 
-let electronProcess: ChildProcess | null = null;
-
-export function startElectronRenderer() {
-  if (electronProcess) return;
-  const electronBinary = path.join(
-    process.cwd(),
-    "node_modules",
-    ".bin",
-    "electron",
-  );
-  const mainPath = path.join(
-    process.cwd(),
-    "dist",
-    "src",
-    "electron",
-    "main.js",
-  );
-  electronProcess = spawn(electronBinary, [mainPath], {
-    stdio: ["pipe", "pipe", "pipe", "ipc"],
-    detached: true,
-  });
+export function sendWorkItemsToRenderer(items: WorkItem[]) {
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: ElectronCommands.WORK_ITEMS, data: items }));
+  } else {
+    // Otherwise, wait for it to open, then send once
+    ws.once("open", () => {
+      ws.send(
+        JSON.stringify({ type: ElectronCommands.WORK_ITEMS, data: items }),
+      );
+    });
+  }
 }
 
-export function sendWorkItemsToRenderer(items: unknown) {
-  if (!electronProcess) {
-    throw new Error("Electron process not started");
+export function createElectronWindow() {
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: ElectronCommands.CREATE_WINDOW }));
+  } else {
+    ws.once("open", () => {
+      ws.send(JSON.stringify({ type: ElectronCommands.CREATE_WINDOW }));
+    });
   }
-  electronProcess.send?.({ type: "work-items", data: items });
+}
+
+export function isElectronWindowOpen(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (ws.readyState === WebSocket.OPEN) {
+      console.log("Sending is window open message");
+      ws.send(JSON.stringify({ type: ElectronCommands.IS_WINDOW_OPEN }));
+    } else {
+      ws.once("open", () => {
+        ws.send(JSON.stringify({ type: ElectronCommands.IS_WINDOW_OPEN }));
+      });
+    }
+    ws.once("message", (data) => {
+      console.log("Received message from renderer:", data.toString());
+      try {
+        const msg = JSON.parse(data.toString());
+        if (msg.type === ElectronCommands.IS_WINDOW_OPEN) {
+          resolve(!!msg.open);
+        }
+      } catch {
+        resolve(false);
+      }
+    });
+  });
 }
