@@ -15,13 +15,36 @@ You are an assistant for managing DevOps tasks.
 User's project: ${project}
 User says: "${userInput}"
 User's tasks: ${tasks}
-If the user wants to create or update a task, respond with a JSON object like:
-{"action": "create", "details": { ... }}
-or
-{"action": "update", "taskId": "...", "details": { ... }}
-If not, respond with {"action": "none", "message": "..."}
 
-Respond with only the updated tasks in JSON format.
+The response should be a JSON object with the following format:
+
+{ "action": "create" | "update" | "delete", etc.  workItem: WorkItemSchema }
+
+The work item should be in the following format:
+
+WorkItemSchema {
+  id: number;
+  ref: number;
+  fields: {
+    "System.Title": string;
+    "System.State": string;
+    "System.WorkItemType": string; // epic, feature, user story, task, etc.
+    "System.Parent": number | null; // this is the id of the parent work item
+    "System.AssignedTo": {
+      displayName: string;
+      url: string;
+      _links: {
+        avatar: {
+          href: string;
+        };
+      };
+      id: string;
+      uniqueName: string;
+      imageUrl: string;
+      descriptor: string;
+    };
+  };
+}
 `;
 
   const response = await anthropic.messages.create({

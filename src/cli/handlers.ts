@@ -2,7 +2,11 @@ import boxen from "boxen";
 import chalk from "chalk";
 import { select, input } from "@inquirer/prompts";
 import ora from "ora";
-import { fetchProjects, fetchWorkItems } from "../services/devops";
+import {
+  createWorkItem,
+  fetchProjects,
+  fetchWorkItems,
+} from "../services/devops";
 import {
   createElectronWindow,
   isElectronWindowOpen,
@@ -121,15 +125,23 @@ async function handleChatMode() {
   }
 
   const tasks = await fetchWorkItems(userState.selectedProject, null); // or filter as needed
-  //   console.log(tasks);
-  const updatedTasks = await getAIResponse(
+  const newTasks = await getAIResponse(
     answer,
     userState.selectedProject,
     tasks,
   );
-  //   console.log(updatedTasks);
+  console.log(newTasks);
 
-  await handleRenderWorkItems(updatedTasks);
+  if (!Array.isArray(newTasks)) {
+    // await createWorkItem(
+    //   userState.selectedProject,
+    //   newTasks.type,
+    //   newTasks.fields,
+    // );
+  }
+
+  //   const updatedTasks = await fetchWorkItems(userState.selectedProject, null);
+  //   await handleRenderWorkItems(updatedTasks);
 }
 
 async function handleCreateProject() {

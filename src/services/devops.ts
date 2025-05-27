@@ -7,7 +7,7 @@ export interface DevOpsProject {
   [key: string]: unknown;
 }
 
-interface WorkItemSchema {
+export interface WorkItemSchema {
   id: number;
   ref: number;
   fields: {
@@ -123,9 +123,43 @@ export async function fetchWorkItems(
         parent: parentItemName,
       };
     });
-    // console.log("returning items", items);
 
     allItems = allItems.concat(items);
   }
   return allItems;
+}
+
+export async function createWorkItem(
+  project: string,
+  type: string,
+  fields: { [key: string]: any },
+): Promise<any> {
+  const { azureOrganization, azurePat } = getConfig();
+  // Convert fields object to JSON Patch format
+  const patchBody = Object.entries(fields).map(([key, value]) => ({
+    op: "add",
+    path: `/fields/${key}`,
+    value,
+  }));
+
+  const response = await fetch(
+    `https://dev.azure.com/${azureOrganization}/${project}/_apis/wit/workitems/$${type}?api-version=6.0`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${Buffer.from(`:${azurePat}`).toString("base64")}`,
+        "Content-Type": "application/json-patch+json",
+      },
+      body: JSON.stringify(patchBody),
+    },
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Failed to create work item: ${response.statusText} - ${errorText}`,
+    );
+  }
+
+  return response.json();
 }
