@@ -1,24 +1,21 @@
 import { ipcRenderer } from "electron";
-// import { renderDocument } from "./renderDocument";
-// import { renderCards } from "./renderCards";
-import { ElectronCommands } from "../types";
+import { renderCards } from "./renderCards";
+import { ElectronCommands, ElectronRenderData, WorkItem } from "../types";
+import { renderDocument, renderStyles } from "./renderDocument";
+import { clearDocument } from "./renderDocument";
 
-// renderDocument();
+renderStyles();
 
-ipcRenderer.on(ElectronCommands.WORK_ITEMS, (_event, data) => {
-  console.log("Received work items", JSON.stringify(data, null, 2));
-  //   try {
-  //     const items = JSON.parse(data);
-  //     renderCards(items);
-  //   } catch (e) {
-  //     const grid = document.getElementById("grid");
-  //     if (grid) {
-  //       grid.innerHTML =
-  //         '<div style="color:red">Failed to load work items.</div>';
-  //     }
-  //   }
-});
+ipcRenderer.on(
+  ElectronCommands.WORK_ITEMS,
+  (_event, workItems: ElectronRenderData<WorkItem>) => {
+    if (workItems.data) {
+      // console.log("Received work items", workItems.data);
+      clearDocument();
+      renderDocument();
+      renderCards(workItems.data);
+    }
+  },
+);
 
-// ipcRenderer.on("main-process-pid", (event, pid) => {
-//   console.log("Main process PID received in renderer:", pid);
-// });
+ipcRenderer.send("renderer-ready");

@@ -4,7 +4,7 @@ const cssStyles = /* css */ `
     font-family: sans-serif; 
     background: #f6f8fa; 
     margin: 0; 
-    padding: 0; 
+    padding: 24px; 
   }
   .container { 
     max-width: 1200px; 
@@ -29,17 +29,19 @@ const cssStyles = /* css */ `
   }
  `;
 
-function renderDocument() {
+function renderStyles() {
   // Create and append styles
   const style = document.createElement("style");
   style.textContent = cssStyles;
   document.head.appendChild(style);
+}
 
+function renderDocument() {
   // Create and append container and grid
   const container = document.createElement("div");
   container.className = "container";
   const heading = document.createElement("h1");
-  heading.textContent = "DevOps Work Items - TEST";
+  heading.textContent = "DevOps Work Items";
   const grid = document.createElement("div");
   grid.id = "grid";
   grid.className = "grid";
@@ -48,4 +50,11 @@ function renderDocument() {
   document.body.appendChild(container);
 }
 
-export { renderDocument };
+function clearDocument() {
+  const container = document.querySelector(".container");
+  if (container) {
+    container.remove();
+  }
+}
+
+export { renderDocument, renderStyles, clearDocument };

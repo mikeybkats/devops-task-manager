@@ -5,9 +5,10 @@ import ora from "ora";
 import { AuthService } from "../services/auth";
 import { fetchProjects, fetchWorkItems } from "../services/devops";
 import {
-  // sendWorkItemsToRenderer,
   createElectronWindow,
   isElectronWindowOpen,
+  sendWorkItemsToRenderer,
+  closeElectronApp,
 } from "./launcher";
 
 const authService = AuthService.getInstance();
@@ -113,6 +114,7 @@ async function handleMainMenu() {
       await selectProject();
       break;
     case "exit":
+      closeElectronApp();
       process.exit(0);
   }
   await handleMainMenu();
@@ -144,13 +146,14 @@ async function handleViewWorkItems(type: string | null) {
     spinner.stop();
 
     const isOpen = await isElectronWindowOpen();
+    console.log("Electron window is open:", isOpen);
     if (!isOpen) {
       console.log(chalk.yellow("Creating Electron window..."));
-      createElectronWindow();
+      await createElectronWindow();
     }
 
     console.log(chalk.yellow("Sending work items to renderer..."));
-    // sendWorkItemsToRenderer(items);
+    sendWorkItemsToRenderer(items);
   } catch (error) {
     console.error(
       chalk.red("Failed to fetch work items:"),
@@ -183,17 +186,6 @@ async function handleCreateProject() {
         return true;
       },
     });
-    // const description = await input({
-    //   message: "Project description (optional):",
-    //   default: "",
-    // });
-    // const visibility = await select({
-    //   message: "Project visibility:",
-    //   choices: [
-    //     { name: "Private", value: "private" },
-    //     { name: "Public", value: "public" },
-    //   ],
-    // });
     const confirm = await select({
       message: "Create project with these settings?",
       choices: [

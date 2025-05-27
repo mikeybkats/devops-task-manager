@@ -10,6 +10,7 @@ export enum ElectronCommands {
   CREATE_WINDOW = "create-window",
   RENDER_CARDS = "render-cards",
   IS_WINDOW_OPEN = "is-window-open",
+  CLOSE_APP = "close-app",
 }
 
 export type ElectronRenderData<T> = {

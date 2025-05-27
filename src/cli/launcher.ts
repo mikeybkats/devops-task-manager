@@ -16,20 +16,24 @@ export function sendWorkItemsToRenderer(items: WorkItem[]) {
   }
 }
 
-export function createElectronWindow() {
-  if (ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({ type: ElectronCommands.CREATE_WINDOW }));
-  } else {
-    ws.once("open", () => {
+export async function createElectronWindow(): Promise<void> {
+  return new Promise((resolve) => {
+    if (ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: ElectronCommands.CREATE_WINDOW }));
-    });
-  }
+      resolve();
+    } else {
+      ws.once("open", () => {
+        ws.send(JSON.stringify({ type: ElectronCommands.CREATE_WINDOW }));
+        resolve();
+      });
+    }
+  });
 }
 
 export function isElectronWindowOpen(): Promise<boolean> {
   return new Promise((resolve) => {
     if (ws.readyState === WebSocket.OPEN) {
-      console.log("Sending is window open message");
+      // send message to server to check if window is open
       ws.send(JSON.stringify({ type: ElectronCommands.IS_WINDOW_OPEN }));
     } else {
       ws.once("open", () => {
@@ -37,7 +41,7 @@ export function isElectronWindowOpen(): Promise<boolean> {
       });
     }
     ws.once("message", (data) => {
-      console.log("Received message from renderer:", data.toString());
+      // receive message from server
       try {
         const msg = JSON.parse(data.toString());
         if (msg.type === ElectronCommands.IS_WINDOW_OPEN) {
@@ -48,4 +52,14 @@ export function isElectronWindowOpen(): Promise<boolean> {
       }
     });
   });
+}
+
+export function closeElectronApp() {
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: ElectronCommands.CLOSE_APP }));
+  } else {
+    ws.once("open", () => {
+      ws.send(JSON.stringify({ type: ElectronCommands.CLOSE_APP }));
+    });
+  }
 }
