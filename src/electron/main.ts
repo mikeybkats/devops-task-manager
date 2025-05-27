@@ -5,6 +5,7 @@ import { WebSocketServer } from "ws";
 let mainWindow: BrowserWindow | null = null;
 let isRendererReady = false;
 let pendingMessages: any[] = [];
+let allowClose = false;
 
 console.log("Electron main process started");
 const wss = new WebSocketServer({ port: 8081 });
@@ -13,26 +14,22 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    frame: false, // hides all window controls
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
     },
   });
   mainWindow.loadURL("about:blank");
-  mainWindow.webContents.openDevTools();
+  // mainWindow.webContents.openDevTools();
   mainWindow.webContents.executeJavaScript(
     'require("./dist/src/electron/renderer.js")',
   );
-
-  // Listen for when the renderer is ready
-  // mainWindow.webContents.on("did-finish-load", () => {
-  //   isRendererReady = true;
-  //   // Send any pending messages
-  //   pendingMessages.forEach(({ channel, message }) => {
-  //     mainWindow?.webContents.send(channel, message);
-  //   });
-  //   pendingMessages = [];
-  // });
+  mainWindow.on("close", (event) => {
+    if (!allowClose) {
+      event?.preventDefault();
+    }
+  });
 }
 
 function sendToRenderer(channel: string, message: any) {
@@ -77,6 +74,7 @@ wss.on("connection", (ws) => {
         break;
       case ElectronCommands.CLOSE_APP:
         console.log("Closing Electron app by CLI command");
+        allowClose = true;
         app.quit();
         break;
       default:

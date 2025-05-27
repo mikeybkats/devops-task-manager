@@ -7,6 +7,30 @@ export interface DevOpsProject {
   [key: string]: unknown;
 }
 
+interface WorkItemSchema {
+  id: number;
+  ref: number;
+  fields: {
+    "System.Title": string;
+    "System.State": string;
+    "System.WorkItemType": string;
+    "System.Parent": number | null;
+    "System.AssignedTo": {
+      displayName: string;
+      url: string;
+      _links: {
+        avatar: {
+          href: string;
+        };
+      };
+      id: string;
+      uniqueName: string;
+      imageUrl: string;
+      descriptor: string;
+    };
+  };
+}
+
 export async function fetchProjects(): Promise<string[]> {
   const { azureOrganization, azurePat } = getConfig();
   const response = await fetch(
@@ -66,7 +90,7 @@ export async function fetchWorkItems(
   for (let i = 0; i < ids.length; i += batchSize) {
     const batchIds = ids.slice(i, i + batchSize).join(",");
     const detailsResponse = await fetch(
-      `https://dev.azure.com/${azureOrganization}/${project}/_apis/wit/workitems?ids=${batchIds}&fields=System.Title,System.State,System.AssignedTo,System.WorkItemType&api-version=6.0`,
+      `https://dev.azure.com/${azureOrganization}/${project}/_apis/wit/workitems?ids=${batchIds}&fields=System.Title,System.State,System.AssignedTo,System.WorkItemType,System.Parent&api-version=6.0`,
       {
         headers: {
           Authorization: `Basic ${Buffer.from(`:${azurePat}`).toString("base64")}`,
@@ -76,12 +100,31 @@ export async function fetchWorkItems(
     );
     if (!detailsResponse.ok) continue;
     const detailsData: any = await detailsResponse.json();
-    const items = detailsData.value.map((item: any) => ({
-      title: item.fields["System.Title"] || "(No Title)",
-      state: item.fields["System.State"] || "",
-      assignedTo: item.fields["System.AssignedTo"]?.displayName || "Unassigned",
-      type: item.fields["System.WorkItemType"] || "Other",
-    }));
+    const detailsDataValue: WorkItemSchema[] = detailsData.value;
+
+    const items = detailsDataValue.map((item: WorkItemSchema) => {
+      let parentItemName = null;
+      if (item.fields["System.Parent"]) {
+        const parentItem = detailsDataValue.find(
+          (innerItem: WorkItemSchema) =>
+            innerItem.id == item.fields["System.Parent"],
+        );
+        if (parentItem) {
+          parentItemName = parentItem.fields["System.Title"];
+        }
+      }
+
+      return {
+        title: item.fields["System.Title"] || "(No Title)",
+        state: item.fields["System.State"] || "",
+        assignedTo:
+          item.fields["System.AssignedTo"]?.displayName || "Unassigned",
+        type: item.fields["System.WorkItemType"] || "Other",
+        parent: parentItemName,
+      };
+    });
+    // console.log("returning items", items);
+
     allItems = allItems.concat(items);
   }
   return allItems;

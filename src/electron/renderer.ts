@@ -10,7 +10,6 @@ ipcRenderer.on(
   ElectronCommands.WORK_ITEMS,
   (_event, workItems: ElectronRenderData<WorkItem>) => {
     if (workItems.data) {
-      // console.log("Received work items", workItems.data);
       clearDocument();
       renderDocument();
       renderCards(workItems.data);

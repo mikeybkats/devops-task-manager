@@ -12,7 +12,6 @@
     "build:renderer": "webpack --config webpack.renderer.config.js",
     "build:types": "tsc --emitDeclarationOnly --outDir dist",
     "build:watch": "webpack --config webpack.main.config.js --watch & webpack --config webpack.renderer.config.js --watch",
-    "start": "node dist/index.mjs",
     "test": "vitest",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
@@ -26,9 +25,8 @@
     "format:check": "prettier --check \"src/**/*.ts\"",
     "validate": "yarn typecheck && yarn lint && yarn format:check && yarn test",
     "prepublishOnly": "yarn validate && yarn build",
-    "start:electron-server": "node start-electron-server.js",
-    "start:cli": "node dist/index.mjs",
-    "dev": "concurrently \"yarn start:electron-server\" \"yarn start:cli\""
+    "start:server": "node start-electron-server.js",
+    "start:cli": "node dist/index.mjs"
   },
   "keywords": [
     "devops",

@@ -7,7 +7,6 @@ const ICONS = {
 } as const;
 
 function renderCards(items: any) {
-  console.log("Rendering cards", items);
   const grid = document.getElementById("grid");
   if (grid) {
     grid.innerHTML = "";
@@ -21,6 +20,7 @@ function renderCards(items: any) {
       <div class="meta"><span class="status ${item.state}">${item.state}</span></div>
       <div class="meta">Type: ${item.type}</div>
       <div class="meta assigned">Assigned to: ${item.assignedTo}</div>
+      <div class="meta parent">Parent: ${item.parent}</div>
     `;
     if (grid) {
       grid.appendChild(card);

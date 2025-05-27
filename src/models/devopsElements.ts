@@ -23,6 +23,7 @@ export interface DevOpsElementBase {
   updatedDate: Date;
   priority?: number;
   tags?: string[];
+  parent?: string;
 }
 
 // Epic specific fields
