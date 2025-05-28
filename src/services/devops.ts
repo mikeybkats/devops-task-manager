@@ -131,10 +131,11 @@ export async function fetchWorkItems(
 
 export async function createWorkItem(
   project: string,
-  type: string,
   fields: { [key: string]: any },
 ): Promise<any> {
   const { azureOrganization, azurePat } = getConfig();
+  const type = fields["System.WorkItemType"];
+
   // Convert fields object to JSON Patch format
   const patchBody = Object.entries(fields).map(([key, value]) => ({
     op: "add",
@@ -142,10 +143,18 @@ export async function createWorkItem(
     value,
   }));
 
+  for (const entry of patchBody) {
+    if (!entry.value) {
+      throw new Error(
+        `Failed to create work item: entry.value is required: ${entry}`,
+      );
+    }
+  }
+
   const response = await fetch(
     `https://dev.azure.com/${azureOrganization}/${project}/_apis/wit/workitems/$${type}?api-version=6.0`,
     {
-      method: "POST",
+      method: "PATCH",
       headers: {
         Authorization: `Basic ${Buffer.from(`:${azurePat}`).toString("base64")}`,
         "Content-Type": "application/json-patch+json",

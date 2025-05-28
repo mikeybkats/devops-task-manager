@@ -132,16 +132,20 @@ async function handleChatMode() {
   );
   console.log(newTasks);
 
-  if (!Array.isArray(newTasks)) {
-    // await createWorkItem(
-    //   userState.selectedProject,
-    //   newTasks.type,
-    //   newTasks.fields,
-    // );
+  switch (newTasks.action) {
+    case "create":
+      try {
+        createWorkItem(userState.selectedProject, newTasks.workItem.fields);
+      } catch (error) {
+        console.error(chalk.red("Failed to create work item:"), error);
+      }
+      break;
+    default:
+      break;
   }
 
-  //   const updatedTasks = await fetchWorkItems(userState.selectedProject, null);
-  //   await handleRenderWorkItems(updatedTasks);
+  const updatedTasks = await fetchWorkItems(userState.selectedProject, null);
+  await handleRenderWorkItems(updatedTasks);
 }
 
 async function handleCreateProject() {

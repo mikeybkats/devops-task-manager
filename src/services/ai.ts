@@ -1,9 +1,12 @@
-import { WorkItem } from "@/types";
+import { getConfig } from "../config/env";
+import { WorkItem } from "../types";
 import Anthropic from "@anthropic-ai/sdk";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
+
+const config = getConfig();
 
 export async function getAIResponse(
   userInput: string,
@@ -16,13 +19,15 @@ User's project: ${project}
 User says: "${userInput}"
 User's tasks: ${tasks}
 
+The user is trying to create, update or delete a work item. The user may want to add a new task as a child of an existing task.
+
 The response should be a JSON object with the following format:
 
 { "action": "create" | "update" | "delete", etc.  workItem: WorkItemSchema }
 
 The work item should be in the following format:
 
-WorkItemSchema {
+{
   id: number;
   ref: number;
   fields: {
@@ -30,21 +35,11 @@ WorkItemSchema {
     "System.State": string;
     "System.WorkItemType": string; // epic, feature, user story, task, etc.
     "System.Parent": number | null; // this is the id of the parent work item
-    "System.AssignedTo": {
-      displayName: string;
-      url: string;
-      _links: {
-        avatar: {
-          href: string;
-        };
-      };
-      id: string;
-      uniqueName: string;
-      imageUrl: string;
-      descriptor: string;
-    };
+    "System.AssignedTo": "email@example.com";
   };
 }
+
+if the user does not provide an email address for System.AssignedTo then default to the first azure user from .env file users: ${config.azureUsers}.
 `;
 
   const response = await anthropic.messages.create({
