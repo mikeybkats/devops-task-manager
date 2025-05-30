@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 import { startCli } from "./cli/menu";
 
+process.on("SIGINT", () => {
+  console.log("\nExiting DevOps Task Manager. Goodbye!");
+  process.exit(0);
+});
+
 async function main() {
   if (!process.env.AZURE_PAT) {
     // eslint-disable-next-line no-console

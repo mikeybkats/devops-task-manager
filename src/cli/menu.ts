@@ -13,6 +13,7 @@ import {
   selectProject,
   displayWelcome,
 } from "./handlers";
+import { safePrompt } from "../utils/safePrompt";
 
 const authService = AuthService.getInstance();
 
@@ -30,10 +31,14 @@ const mainMenuOptions = [
 async function handleMainMenu() {
   displayUserInfo(authService);
 
-  const answer = await select({
-    message: "What would you like to do?",
-    choices: mainMenuOptions,
-  });
+  const answer = await safePrompt(() =>
+    select({
+      message: "What would you like to do?",
+      choices: mainMenuOptions,
+    }),
+  );
+  if (answer === undefined) return;
+
   switch (answer) {
     case "all":
       await handleViewAllWorkItems();

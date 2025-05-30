@@ -18,6 +18,7 @@ import { getAIResponse } from "../services/ai";
 import { WorkItem } from "../types";
 import { handleResult } from "../utils/result";
 import { getConfig } from "../config/env";
+import { safePrompt } from "../utils/safePrompt";
 
 interface UserState {
   username?: string;
@@ -64,33 +65,30 @@ function displayUserInfo(authService: AuthService) {
 
 async function selectProject() {
   const spinner = ora("Fetching projects...").start();
-  try {
-    const projects = await fetchProjects();
-    if (projects.error) {
-      spinner.fail(chalk.red(projects.error));
-    } else if (projects.data && projects.data.length === 0) {
-      console.log(
-        chalk.yellow("No projects found. Please create a project first."),
-      );
-      await handleCreateProject();
-      return await selectProject();
-    } else {
-      spinner.succeed("Projects loaded");
+  const projectsResult = await fetchProjects();
 
-      if (projects.data) {
-        const answer = await select({
-          message: "Select a project:",
-          choices: projects.data.map((p) => ({ name: p, value: p })),
-        });
-        userState.selectedProject = answer;
-      }
-    }
-  } catch (error) {
+  const projects = handleResult(projectsResult, "Failed to fetch projects.");
+  if (!projects) {
     spinner.fail("Failed to fetch projects");
-    if (error instanceof Error) {
-      console.error(chalk.red(error.message));
-    }
+    return;
   }
+  if (projects.length === 0) {
+    console.log(
+      chalk.yellow("No projects found. Please create a project first."),
+    );
+    await handleCreateProject();
+    return await selectProject();
+  }
+  spinner.succeed("Projects loaded");
+
+  const answer = await safePrompt(() =>
+    select({
+      message: "Select a project:",
+      choices: projects.map((p) => ({ name: p, value: p })),
+    }),
+  );
+  if (answer === undefined) return; // User canceled
+  userState.selectedProject = answer;
 }
 
 async function handleViewTasks() {
