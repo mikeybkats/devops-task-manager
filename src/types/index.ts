@@ -1,8 +1,10 @@
 export interface WorkItem {
+  id: number;
   title: string;
   state: string;
   assignedTo: string;
   type: string;
+  isNew?: boolean;
 }
 
 export enum ElectronCommands {

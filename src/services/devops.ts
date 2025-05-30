@@ -1,6 +1,10 @@
 import { WorkItem } from "../types";
 import { getConfig } from "../config/env";
 
+export type DevOpsResult<T> =
+  | { data: T; error?: undefined }
+  | { data?: undefined; error: string };
+
 export interface DevOpsProject {
   id: string;
   name: string;
@@ -31,66 +35,11 @@ export interface WorkItemSchema {
   };
 }
 
-export async function fetchProjects(): Promise<string[]> {
+export async function fetchProjects(): Promise<DevOpsResult<string[]>> {
   const { azureOrganization, azurePat } = getConfig();
-  const response = await fetch(
-    `https://dev.azure.com/${azureOrganization}/_apis/projects?api-version=6.0`,
-    {
-      headers: {
-        Authorization: `Basic ${Buffer.from(`:${azurePat}`).toString("base64")}`,
-        "Content-Type": "application/json",
-      },
-    },
-  );
-  if (!response.ok) {
-    throw new Error(`Failed to fetch projects: ${response.statusText}`);
-  }
-  const data: unknown = await response.json();
-  if (
-    typeof data === "object" &&
-    data !== null &&
-    Array.isArray((data as any).value)
-  ) {
-    return (data as { value: DevOpsProject[] }).value.map(
-      (project) => project.name,
-    );
-  }
-  throw new Error("Unexpected response format from Azure DevOps API");
-}
-
-export async function fetchWorkItems(
-  project: string,
-  type: string | null,
-): Promise<WorkItem[]> {
-  const { azureOrganization, azurePat } = getConfig();
-  let typeFilter =
-    type && type !== "All" ? `AND [System.WorkItemType] = '${type}'` : "";
-  const wiqlQuery = {
-    query: `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = '${project}' ${typeFilter} ORDER BY [System.ChangedDate] DESC`,
-  };
-  const wiqlResponse = await fetch(
-    `https://dev.azure.com/${azureOrganization}/${project}/_apis/wit/wiql?api-version=6.0`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${Buffer.from(`:${azurePat}`).toString("base64")}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(wiqlQuery),
-    },
-  );
-  if (!wiqlResponse.ok) {
-    throw new Error(`Failed to fetch work items: ${wiqlResponse.statusText}`);
-  }
-  const wiqlData: any = await wiqlResponse.json();
-  const ids = wiqlData.workItems?.map((item: any) => item.id) || [];
-  if (!ids.length) return [];
-  const batchSize = 200;
-  let allItems: WorkItem[] = [];
-  for (let i = 0; i < ids.length; i += batchSize) {
-    const batchIds = ids.slice(i, i + batchSize).join(",");
-    const detailsResponse = await fetch(
-      `https://dev.azure.com/${azureOrganization}/${project}/_apis/wit/workitems?ids=${batchIds}&fields=System.Title,System.State,System.AssignedTo,System.WorkItemType,System.Parent&api-version=6.0`,
+  try {
+    const response = await fetch(
+      `https://dev.azure.com/${azureOrganization}/_apis/projects?api-version=6.0`,
       {
         headers: {
           Authorization: `Basic ${Buffer.from(`:${azurePat}`).toString("base64")}`,
@@ -98,77 +47,200 @@ export async function fetchWorkItems(
         },
       },
     );
-    if (!detailsResponse.ok) continue;
-    const detailsData: any = await detailsResponse.json();
-    const detailsDataValue: WorkItemSchema[] = detailsData.value;
-
-    const items = detailsDataValue.map((item: WorkItemSchema) => {
-      let parentItemName = null;
-      if (item.fields["System.Parent"]) {
-        const parentItem = detailsDataValue.find(
-          (innerItem: WorkItemSchema) =>
-            innerItem.id == item.fields["System.Parent"],
-        );
-        if (parentItem) {
-          parentItemName = parentItem.fields["System.Title"];
-        }
-      }
-
+    if (!response.ok) {
+      return { error: `Failed to fetch projects: ${response.statusText}` };
+    }
+    const data: unknown = await response.json();
+    if (
+      typeof data === "object" &&
+      data !== null &&
+      Array.isArray((data as any).value)
+    ) {
       return {
-        title: item.fields["System.Title"] || "(No Title)",
-        state: item.fields["System.State"] || "",
-        assignedTo:
-          item.fields["System.AssignedTo"]?.displayName || "Unassigned",
-        type: item.fields["System.WorkItemType"] || "Other",
-        parent: parentItemName,
+        data: (data as { value: DevOpsProject[] }).value.map(
+          (project) => project.name,
+        ),
       };
-    });
-
-    allItems = allItems.concat(items);
+    }
+    return { error: "Unexpected response format from Azure DevOps API" };
+  } catch (err) {
+    return { error: (err as Error).message };
   }
-  return allItems;
+}
+
+export async function fetchWorkItems(
+  project: string,
+  type: string | null,
+  user: string | null,
+): Promise<DevOpsResult<WorkItem[]>> {
+  const { azureOrganization, azurePat } = getConfig();
+  try {
+    let typeFilter =
+      type && type !== "All" ? `AND [System.WorkItemType] = '${type}'` : "";
+    let userFilter = user ? `AND [System.AssignedTo] = '${user}'` : "";
+    const wiqlQuery = {
+      query: `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = '${project}' ${typeFilter} ${userFilter} ORDER BY [System.ChangedDate] DESC`,
+    };
+    const wiqlResponse = await fetch(
+      `https://dev.azure.com/${azureOrganization}/${project}/_apis/wit/wiql?api-version=6.0`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${Buffer.from(`:${azurePat}`).toString("base64")}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(wiqlQuery),
+      },
+    );
+    if (!wiqlResponse.ok) {
+      return {
+        error: `Failed to fetch work items: ${wiqlResponse.statusText}`,
+      };
+    }
+    const wiqlData: any = await wiqlResponse.json();
+    const ids = wiqlData.workItems?.map((item: any) => item.id) || [];
+    if (!ids.length) return { data: [] };
+    const batchSize = 200;
+    let allItems: WorkItem[] = [];
+    for (let i = 0; i < ids.length; i += batchSize) {
+      const batchIds = ids.slice(i, i + batchSize).join(",");
+      const detailsResponse = await fetch(
+        `https://dev.azure.com/${azureOrganization}/${project}/_apis/wit/workitems?ids=${batchIds}&fields=System.Title,System.State,System.AssignedTo,System.WorkItemType,System.Parent&api-version=6.0`,
+        {
+          headers: {
+            Authorization: `Basic ${Buffer.from(`:${azurePat}`).toString("base64")}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+      if (!detailsResponse.ok) continue;
+      const detailsData: any = await detailsResponse.json();
+      const detailsDataValue: WorkItemSchema[] = detailsData.value;
+
+      const items = detailsDataValue.map((item: WorkItemSchema) => {
+        let parentItemName = null;
+        if (item.fields["System.Parent"]) {
+          const parentItem = detailsDataValue.find(
+            (innerItem: WorkItemSchema) =>
+              innerItem.id == item.fields["System.Parent"],
+          );
+          if (parentItem) {
+            parentItemName = parentItem.fields["System.Title"];
+          }
+        }
+
+        return {
+          id: item.id,
+          title: item.fields["System.Title"] || "(No Title)",
+          state: item.fields["System.State"] || "",
+          assignedTo:
+            item.fields["System.AssignedTo"]?.displayName || "Unassigned",
+          type: item.fields["System.WorkItemType"] || "Other",
+          parent: parentItemName,
+        };
+      });
+
+      allItems = allItems.concat(items);
+    }
+    return { data: allItems };
+  } catch (err) {
+    return { error: (err as Error).message };
+  }
 }
 
 export async function createWorkItem(
   project: string,
   fields: { [key: string]: any },
-): Promise<any> {
+): Promise<DevOpsResult<any>> {
   const { azureOrganization, azurePat } = getConfig();
   const type = fields["System.WorkItemType"];
 
-  // Convert fields object to JSON Patch format
-  const patchBody = Object.entries(fields).map(([key, value]) => ({
-    op: "add",
-    path: `/fields/${key}`,
-    value,
-  }));
+  // Filter out null/undefined values
+  const patchBody = Object.entries(fields)
+    .filter(([_, value]) => value !== null && value !== undefined)
+    .map(([key, value]) => ({
+      op: "add",
+      path: `/fields/${key}`,
+      value,
+    }));
 
-  for (const entry of patchBody) {
-    if (!entry.value) {
-      throw new Error(
-        `Failed to create work item: entry.value is required: ${entry}`,
-      );
-    }
+  // Check for required fields
+  const requiredFields = [
+    "System.Title",
+    "System.WorkItemType",
+    "System.State",
+  ];
+  const missingFields = requiredFields.filter((f) => !fields[f]);
+  if (missingFields.length > 0) {
+    return {
+      error: `Failed to create work item: Missing required fields: ${missingFields.join(", ")}`,
+    };
   }
 
-  const response = await fetch(
-    `https://dev.azure.com/${azureOrganization}/${project}/_apis/wit/workitems/$${type}?api-version=6.0`,
-    {
-      method: "PATCH",
-      headers: {
-        Authorization: `Basic ${Buffer.from(`:${azurePat}`).toString("base64")}`,
-        "Content-Type": "application/json-patch+json",
+  try {
+    const response = await fetch(
+      `https://dev.azure.com/${azureOrganization}/${project}/_apis/wit/workitems/$${type}?api-version=6.0`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Basic ${Buffer.from(`:${azurePat}`).toString("base64")}`,
+          "Content-Type": "application/json-patch+json",
+        },
+        body: JSON.stringify(patchBody),
       },
-      body: JSON.stringify(patchBody),
-    },
-  );
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `Failed to create work item: ${response.statusText} - ${errorText}`,
     );
-  }
 
-  return response.json();
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        error: `Failed to create work item: ${response.statusText} - ${errorText}`,
+      };
+    }
+
+    return { data: await response.json() };
+  } catch (err) {
+    return { error: (err as Error).message };
+  }
+}
+
+export async function updateWorkItem(
+  project: string,
+  id: number,
+  fields: { [key: string]: any },
+): Promise<DevOpsResult<any>> {
+  const { azureOrganization, azurePat } = getConfig();
+
+  // Convert fields object to JSON Patch format, filtering out null/undefined
+  const patchBody = Object.entries(fields)
+    .filter(([_, value]) => value !== null && value !== undefined)
+    .map(([key, value]) => ({
+      op: "add",
+      path: `/fields/${key}`,
+      value,
+    }));
+
+  try {
+    const response = await fetch(
+      `https://dev.azure.com/${azureOrganization}/${project}/_apis/wit/workitems/${id}?api-version=6.0`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Basic ${Buffer.from(`:${azurePat}`).toString("base64")}`,
+          "Content-Type": "application/json-patch+json",
+        },
+        body: JSON.stringify(patchBody),
+      },
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        error: `Failed to update work item: ${response.statusText} - ${errorText}`,
+      };
+    }
+
+    return { data: await response.json() };
+  } catch (err) {
+    return { error: (err as Error).message };
+  }
 }

@@ -10,7 +10,6 @@ import {
   handleViewStories,
   handleChatMode,
   handleCreateProject,
-  handleManageProject,
   selectProject,
   displayWelcome,
 } from "./handlers";
@@ -24,14 +23,13 @@ const mainMenuOptions = [
   { name: "View Features", value: "features" },
   { name: "View User Stories", value: "stories" },
   { name: "Chat Mode", value: "chat" },
-  { name: "Create Project", value: "create" },
-  { name: "Manage Project", value: "manage" },
-  { name: "Switch Project", value: "switch" },
+  { name: "Switch Project", value: "switch_project" },
   { name: "Exit", value: "exit" },
 ];
 
 async function handleMainMenu() {
   displayUserInfo(authService);
+
   const answer = await select({
     message: "What would you like to do?",
     choices: mainMenuOptions,
@@ -58,10 +56,7 @@ async function handleMainMenu() {
     case "create":
       await handleCreateProject();
       break;
-    case "manage":
-      await handleManageProject();
-      break;
-    case "switch":
+    case "switch_project":
       await selectProject();
       break;
     case "exit":

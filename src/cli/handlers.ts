@@ -6,6 +6,7 @@ import {
   createWorkItem,
   fetchProjects,
   fetchWorkItems,
+  updateWorkItem,
 } from "../services/devops";
 import {
   createElectronWindow,
@@ -15,12 +16,17 @@ import {
 import { AuthService } from "../services/auth";
 import { getAIResponse } from "../services/ai";
 import { WorkItem } from "../types";
+import { handleResult } from "../utils/result";
+import { getConfig } from "../config/env";
 
 interface UserState {
   username?: string;
   selectedProject?: string;
+  allWorkItems?: WorkItem[];
 }
 let userState: UserState = {};
+
+let lastRenderedIds: Set<number> = new Set();
 
 function displayWelcome() {
   const message = boxen(chalk.bold("* Manage DevOps Agent *"), {
@@ -30,6 +36,20 @@ function displayWelcome() {
     borderColor: "blue",
   });
   console.log(message);
+}
+
+async function promptForUserFilter(): Promise<string | null> {
+  const { azureUsers } = getConfig();
+  if (!azureUsers || azureUsers.length === 0) return null;
+
+  const answer = await select({
+    message: "Filter by user (or select All):",
+    choices: [
+      { name: "All users", value: null },
+      ...azureUsers.map((u) => ({ name: u, value: u })),
+    ],
+  });
+  return answer;
 }
 
 function displayUserInfo(authService: AuthService) {
@@ -46,25 +66,30 @@ async function selectProject() {
   const spinner = ora("Fetching projects...").start();
   try {
     const projects = await fetchProjects();
-    spinner.succeed("Projects loaded");
-    if (!projects.length) {
+    if (projects.error) {
+      spinner.fail(chalk.red(projects.error));
+    } else if (projects.data && projects.data.length === 0) {
       console.log(
         chalk.yellow("No projects found. Please create a project first."),
       );
       await handleCreateProject();
       return await selectProject();
+    } else {
+      spinner.succeed("Projects loaded");
+
+      if (projects.data) {
+        const answer = await select({
+          message: "Select a project:",
+          choices: projects.data.map((p) => ({ name: p, value: p })),
+        });
+        userState.selectedProject = answer;
+      }
     }
-    const answer = await select({
-      message: "Select a project:",
-      choices: projects.map((p) => ({ name: p, value: p })),
-    });
-    userState.selectedProject = answer;
   } catch (error) {
     spinner.fail("Failed to fetch projects");
     if (error instanceof Error) {
       console.error(chalk.red(error.message));
     }
-    process.exit(1);
   }
 }
 
@@ -90,25 +115,39 @@ async function handleRenderWorkItems(updatedTasks: WorkItem[]) {
     await createElectronWindow();
   }
 
-  sendWorkItemsToRenderer(updatedTasks);
+  // Mark new items
+  const currentIds = new Set(updatedTasks.map((item) => item.id));
+  const itemsWithIsNew = updatedTasks.map((item) => ({
+    ...item,
+    isNew: !lastRenderedIds.has(item.id),
+  }));
+  // Update lastRenderedIds for next render
+  lastRenderedIds = currentIds;
+
+  sendWorkItemsToRenderer(itemsWithIsNew);
 }
 
 async function handleViewWorkItems(type: string | null) {
-  try {
-    if (!userState.selectedProject) {
-      console.log(chalk.red("No project selected."));
-      return;
-    }
-    const spinner = ora("Fetching work items...").start();
-    const items = await fetchWorkItems(userState.selectedProject, type);
-    spinner.stop();
+  const userFilter = await promptForUserFilter();
 
+  if (!userState.selectedProject) {
+    console.log(chalk.red("No project selected."));
+    return;
+  }
+
+  const spinner = ora("Fetching work items...").start();
+  const itemsResult = await fetchWorkItems(
+    userState.selectedProject,
+    type,
+    userFilter,
+  );
+  spinner.stop();
+
+  const items = handleResult(itemsResult, "Failed to fetch work items.");
+
+  if (items) {
+    userState.allWorkItems = items;
     await handleRenderWorkItems(items);
-  } catch (error) {
-    console.error(
-      chalk.red("Failed to fetch work items:"),
-      error instanceof Error ? error.message : error,
-    );
   }
 }
 
@@ -124,28 +163,61 @@ async function handleChatMode() {
     return;
   }
 
-  const tasks = await fetchWorkItems(userState.selectedProject, null); // or filter as needed
-  const newTasks = await getAIResponse(
-    answer,
-    userState.selectedProject,
-    tasks,
-  );
-  console.log(newTasks);
-
-  switch (newTasks.action) {
-    case "create":
-      try {
-        createWorkItem(userState.selectedProject, newTasks.workItem.fields);
-      } catch (error) {
-        console.error(chalk.red("Failed to create work item:"), error);
-      }
-      break;
-    default:
-      break;
+  let tasks;
+  if (!userState.allWorkItems) {
+    const tasksResult = await fetchWorkItems(
+      userState.selectedProject,
+      null,
+      null,
+    );
+    tasks = handleResult(tasksResult, "Failed to fetch tasks.");
+  } else {
+    tasks = userState.allWorkItems;
   }
 
-  const updatedTasks = await fetchWorkItems(userState.selectedProject, null);
-  await handleRenderWorkItems(updatedTasks);
+  if (tasks) {
+    const newTasks = await getAIResponse(
+      answer,
+      userState.selectedProject,
+      tasks,
+    );
+
+    console.log("handleChatMode -- ", newTasks.action);
+
+    switch (newTasks.action) {
+      case "create":
+        const workItemResult = await createWorkItem(
+          userState.selectedProject,
+          newTasks.workItem.fields,
+        );
+        handleResult(workItemResult, "Failed to create work item.");
+        break;
+      case "update":
+        const updateWorkItemResult = await updateWorkItem(
+          userState.selectedProject,
+          newTasks.workItem.id,
+          newTasks.workItem.fields,
+        );
+        handleResult(updateWorkItemResult, "Failed to update work item.");
+        break;
+      default:
+        break;
+    }
+
+    const updatedTasksResult = await fetchWorkItems(
+      userState.selectedProject,
+      null,
+      null,
+    );
+    const updatedTasks = handleResult(
+      updatedTasksResult,
+      "Failed to update tasks.",
+    );
+
+    if (updatedTasks) {
+      await handleRenderWorkItems(updatedTasks);
+    }
+  }
 }
 
 async function handleCreateProject() {

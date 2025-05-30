@@ -15,18 +15,6 @@ const cssStyles = /* css */ `
     flex-wrap: wrap; 
     gap: 24px; 
   }
-  .card { 
-    background: #fff; 
-    border-radius: 12px; 
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08); 
-    padding: 24px; 
-    width: 320px; 
-    min-height: 180px; 
-    display: flex; 
-    flex-direction: column; 
-    justify-content: space-between; 
-    border: 2px solid #e1e4e8; 
-  }
  `;
 
 function renderStyles() {

@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-
 import { startCli } from "./cli/menu";
 
 async function main() {

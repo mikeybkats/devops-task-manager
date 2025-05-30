@@ -13,6 +13,7 @@ export async function getAIResponse(
   project: string,
   tasks: WorkItem[],
 ) {
+  console.log("getAIResponse -- ", userInput, tasks);
   const prompt = `
 You are an assistant for managing DevOps tasks.
 User's project: ${project}
