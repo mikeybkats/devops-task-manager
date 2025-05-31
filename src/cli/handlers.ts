@@ -8,6 +8,7 @@ import {
   fetchWorkItems,
   updateWorkItem,
   batchUpdateWorkItems,
+  batchCreateWorkItems,
 } from "../services/devops";
 import {
   createElectronWindow,
@@ -184,40 +185,50 @@ async function handleChatMode() {
       tasksArray,
     );
 
-    // console.log("handleChatMode -- ", newTasks.action);
+    console.log("handleChatMode -- ", newTasks.action);
 
-    switch (newTasks.action) {
-      case "create":
-        const workItemResult = await createWorkItem(
-          userState.selectedProject,
-          newTasks.workItem.fields,
-        );
-        handleResult(workItemResult, "Failed to create work item.");
-        break;
-      case "update":
-        const updateWorkItemResult = await updateWorkItem(
-          userState.selectedProject,
-          newTasks.workItem.id,
-          newTasks.workItem.fields,
-        );
-        handleResult(updateWorkItemResult, "Failed to update work item.");
-        break;
-      case "batch-update":
-        const batchUpdateWorkItemResult = await batchUpdateWorkItems(
-          userState.selectedProject,
-          newTasks.workItem.fields,
-        );
-        handleResult(
-          batchUpdateWorkItemResult,
-          "Failed to batch update work items.",
-        );
-        break;
-      case "none":
-        console.log(chalk.yellow("Sorry, I didn't understand."));
-        break;
-      default:
-        break;
-    }
+    // switch (newTasks.action) {
+    //   case "create":
+    //     const workItemResult = await createWorkItem(
+    //       userState.selectedProject,
+    //       newTasks.workItem.fields,
+    //     );
+    //     handleResult(workItemResult, "Failed to create work item.");
+    //     break;
+    //   case "batch-create":
+    //     const batchCreateWorkItemResult = await batchCreateWorkItems(
+    //       userState.selectedProject,
+    //       newTasks.workItems,
+    //     );
+    //     handleResult(
+    //       batchCreateWorkItemResult,
+    //       "Failed to batch create work items.",
+    //     );
+    //     break;
+    //   case "update":
+    //     const updateWorkItemResult = await updateWorkItem(
+    //       userState.selectedProject,
+    //       newTasks.workItem.id,
+    //       newTasks.workItem.fields,
+    //     );
+    //     handleResult(updateWorkItemResult, "Failed to update work item.");
+    //     break;
+    //   case "batch-update":
+    //     const batchUpdateWorkItemResult = await batchUpdateWorkItems(
+    //       userState.selectedProject,
+    //       newTasks.workItem.fields,
+    //     );
+    //     handleResult(
+    //       batchUpdateWorkItemResult,
+    //       "Failed to batch update work items.",
+    //     );
+    //     break;
+    //   case "none":
+    //     console.log(chalk.yellow("Sorry, I didn't understand."));
+    //     break;
+    //   default:
+    //     break;
+    // }
 
     const updatedTasksResult = await fetchWorkItems(
       userState.selectedProject,
@@ -228,7 +239,6 @@ async function handleChatMode() {
       updatedTasksResult,
       "Failed to update tasks.",
     );
-    console.log("updatedTasks -- ", updatedTasks);
     const updatedTasksArray = Array.isArray(updatedTasks)
       ? updatedTasks
       : [updatedTasks];

@@ -26,7 +26,7 @@ The user is trying to create, update or delete a work item. The user may want to
 
 You must respond with ONLY a JSON object in this exact format:
 
-{ "action": "create" | "update" | "batch-update" | "delete", "workItem": WorkItemSchema }
+{ "action": "create" | "update" | "batch-update" | "delete" | "batch-create", "workItem": WorkItemSchema }
 
 The work item must be in this exact format:
 
@@ -104,13 +104,38 @@ Example of a valid response for creating a batch of work items:
   ]
 }
 
+If the user asks to create multiple tasks, respond with:
+{
+  "action": "batch-create",
+  "workItems": [
+    { "title": "Checkbox - web component", "state": "New", "assignedTo": "user@example.com", "type": "Task", "parent": "UI Components" },
+    { "title": "Radio Button - web component", "state": "New", "assignedTo": "user@example.com", "type": "Task", "parent": "UI Components" },
+    { "title": "Input - web component", "state": "New", "assignedTo": "user@example.com", "type": "Task", "parent": "UI Components" }
+    // ...etc, for all items in the category
+  ]
+}
+
+- Only use the parent title exactly as it appears in the user's tasks list.
+- Do not create storybook pages unless the user specifically asks for them.
+- Always output a batch if the user asks for multiple items.
+- Use the user's email for assignedTo if provided, otherwise use the default.
+
 If the user does not specify who to assign the task to, then default to the first azure user from .env file users: ${config.azureUsers}.
 
-Remember: Respond with ONLY the JSON object, no additional text or explanation.`;
+Remember: Respond with ONLY the JSON object, no additional text or explanation.
+
+11. If the user asks for multiple tasks, always use "action": "batch-create" and return a "workItems" array.
+12. Only use the parent title provided by the user or as found in the user's tasks.
+13. Do not infer unrelated task types (e.g., storybook) unless explicitly requested.
+14. If the user asks to create multiple tasks (using words like "all", "every", "each", "for every", "for each", or by listing several items), you must generate a separate task for each relevant item, using your knowledge and context to enumerate them if needed.
+15. If the user refers to a category (e.g., "all standard HTML form controls", "all microservices", "all environments"), enumerate the items in that category based on your knowledge, even if the user does not list them all explicitly.
+16. Always use "action": "batch-create" and return a "workItems" array for batch creation.
+17. Use the parent, assignedTo, and other fields as specified by the user or as appropriate for each task.
+18. Do not limit the batch to only the items explicitly mentioned by the user if the intent is to cover a whole category.`;
 
   const response = await anthropic.messages.create({
     model: "claude-3-haiku-20240307",
-    max_tokens: 512,
+    max_tokens: 2048,
     messages: [{ role: "user", content: prompt }],
   });
 

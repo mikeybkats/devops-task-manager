@@ -290,3 +290,12 @@ export async function batchUpdateWorkItems(
     updates.map((update) => updateWorkItem(project, update.id, update.fields)),
   );
 }
+
+export async function batchCreateWorkItems(
+  project: string,
+  updates: { id: number; fields: { [key: string]: any } }[],
+): Promise<DevOpsResult<any>[]> {
+  return Promise.all(
+    updates.map((update) => createWorkItem(project, update.fields)),
+  );
+}
