@@ -209,15 +209,51 @@ export async function updateWorkItem(
   fields: { [key: string]: any },
 ): Promise<DevOpsResult<any>> {
   const { azureOrganization, azurePat } = getConfig();
+  console.log("updateWorkItem -- ", project, id, fields);
 
-  // Convert fields object to JSON Patch format, filtering out null/undefined
+  // Fetch the current work item to check for existing fields
+  let existingFields: any = {};
+  try {
+    const currentResponse = await fetch(
+      `https://dev.azure.com/${azureOrganization}/${project}/_apis/wit/workitems/${id}?api-version=6.0`,
+      {
+        headers: {
+          Authorization: `Basic ${Buffer.from(`:${azurePat}`).toString("base64")}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+    if (currentResponse.ok) {
+      const currentData = await currentResponse.json();
+      existingFields = currentData.fields || {};
+    }
+  } catch (err) {
+    console.warn("Could not fetch current work item for patch type detection.");
+  }
+
+  // Build patch body with correct op
   const patchBody = Object.entries(fields)
-    .filter(([_, value]) => value !== null && value !== undefined)
+    .filter(([_, value]) => value !== undefined)
     .map(([key, value]) => ({
-      op: "add",
+      op: key in existingFields ? "replace" : "add",
       path: `/fields/${key}`,
       value,
     }));
+
+  if (fields["System.Parent"]) {
+    patchBody.push({
+      op: "add",
+      path: "/relations/-",
+      value: {
+        rel: "System.LinkTypes.Hierarchy-Reverse",
+        url: `https://dev.azure.com/${azureOrganization}/${project}/_apis/wit/workItems/${fields["System.Parent"]}`,
+      },
+    });
+    // Optionally, delete the System.Parent field from fields so it doesn't get sent as a field
+    delete fields["System.Parent"];
+  }
+
+  console.log("Patch body:", JSON.stringify(patchBody, null, 2));
 
   try {
     const response = await fetch(
@@ -234,13 +270,18 @@ export async function updateWorkItem(
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error("Update failed with status:", response.status);
+      console.error("Error response:", errorText);
       return {
         error: `Failed to update work item: ${response.statusText} - ${errorText}`,
       };
     }
 
-    return { data: await response.json() };
+    const responseData = await response.json();
+    console.log("Update successful:", responseData);
+    return { data: responseData };
   } catch (err) {
+    console.error("Update error:", err);
     return { error: (err as Error).message };
   }
 }

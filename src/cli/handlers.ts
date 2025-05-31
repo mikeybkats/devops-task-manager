@@ -198,6 +198,9 @@ async function handleChatMode() {
         );
         handleResult(updateWorkItemResult, "Failed to update work item.");
         break;
+      case "none":
+        console.log(chalk.yellow("Sorry, I didn't understand."));
+        break;
       default:
         break;
     }
