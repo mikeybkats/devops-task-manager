@@ -280,3 +280,13 @@ export async function updateWorkItem(
     return { error: (err as Error).message };
   }
 }
+
+export async function batchUpdateWorkItems(
+  project: string,
+  updates: { id: number; fields: { [key: string]: any } }[],
+): Promise<DevOpsResult<any>[]> {
+  // You can use Promise.all to run updates in parallel
+  return Promise.all(
+    updates.map((update) => updateWorkItem(project, update.id, update.fields)),
+  );
+}

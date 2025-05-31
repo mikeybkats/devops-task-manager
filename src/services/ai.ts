@@ -1,6 +1,7 @@
 import { getConfig } from "../config/env";
 import { WorkItem } from "../types";
 import Anthropic from "@anthropic-ai/sdk";
+import { jsonrepair } from "jsonrepair";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -21,11 +22,11 @@ User's project: ${project}
 User says: "${userInput}"
 User's tasks: ${JSON.stringify(tasks, null, 2)}
 
-The user is trying to create, update or delete a work item. The user may want to add a new task as a child of an existing task.
+The user is trying to create, update or delete a work item. The user may want to add a new task as a child of an existing task. The user may ask to create a batch of work items.
 
 You must respond with ONLY a JSON object in this exact format:
 
-{ "action": "create" | "update" | "delete", "workItem": WorkItemSchema }
+{ "action": "create" | "update" | "batch-update" | "delete", "workItem": WorkItemSchema }
 
 The work item must be in this exact format:
 
@@ -49,6 +50,10 @@ Important rules:
 8. DO NOT include any text before or after the JSON object
 9. DO NOT explain your response
 10. DO NOT use markdown formatting
+11. You must output valid JSON. Do not include trailing commas, comments, or use single quotes. Only use double quotes for property names and string values.
+12. If you output an array, ensure every object and the array itself is valid JSON.
+13. Do not break up the JSON with explanations or extra whitespace.
+14. If you cannot fit the full response, return a valid partial JSON array (do not cut off in the middle of an object or string).
 
 Example of a valid response for creating a new task:
 {
@@ -76,6 +81,29 @@ Example of a valid response for updating a task's parent:
   }
 }
 
+Example of a valid response for creating a batch of work items:
+{
+  "action": "batch-update",
+  "workItems": [
+    {
+      "id": 16,
+      "title": "Add a docs mdx page",
+      "state": "New",
+      "assignedTo": "michael barakat",
+      "type": "Task",
+      "parent": "view all components as storybook pages"
+    },
+    {
+      "id": 17,
+      "title": "Add a docs mdx page",
+      "state": "New",
+      "assignedTo": "michael barakat",
+      "type": "Task",
+      "parent": "view all components as storybook pages"
+    }
+  ]
+}
+
 If the user does not specify who to assign the task to, then default to the first azure user from .env file users: ${config.azureUsers}.
 
 Remember: Respond with ONLY the JSON object, no additional text or explanation.`;
@@ -92,7 +120,10 @@ Remember: Respond with ONLY the JSON object, no additional text or explanation.`
       .map((block) => (block as { type: "text"; text: string }).text)
       .join("");
 
-    const parsed = JSON.parse(text);
+    const repaired = jsonrepair(text);
+    const parsed = JSON.parse(repaired);
+
+    console.log("AI Response text:", text);
     console.log("Parsed response:", parsed);
 
     // Transform the response to match the expected format
@@ -135,6 +166,38 @@ Remember: Respond with ONLY the JSON object, no additional text or explanation.`
           },
         },
       };
+    }
+
+    if (parsed.action === "batch-update" && Array.isArray(parsed.workItems)) {
+      parsed.workItems = parsed.workItems.map((item: any) => {
+        // Find parent ID if parent title is provided
+        let parentId = null;
+        if (item.parent) {
+          const parentTask = tasks.find((task) => task.title === item.parent);
+          if (parentTask) {
+            parentId = parentTask.id;
+          }
+        }
+        return {
+          id: item.id,
+          ref: 0,
+          fields: {
+            "System.Title": item.title,
+            "System.State": item.state,
+            "System.WorkItemType": item.type,
+            "System.Parent": parentId,
+            "System.AssignedTo": {
+              displayName: item.assignedTo,
+              url: "",
+              _links: { avatar: { href: "" } },
+              id: "",
+              uniqueName: item.assignedTo,
+              imageUrl: "",
+              descriptor: "",
+            },
+          },
+        };
+      });
     }
 
     return parsed;

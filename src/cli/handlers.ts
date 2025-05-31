@@ -7,6 +7,7 @@ import {
   fetchProjects,
   fetchWorkItems,
   updateWorkItem,
+  batchUpdateWorkItems,
 } from "../services/devops";
 import {
   createElectronWindow,
@@ -81,10 +82,11 @@ async function selectProject() {
   }
   spinner.succeed("Projects loaded");
 
+  const choices = Array.isArray(projects) ? projects : [projects];
   const answer = await safePrompt(() =>
     select({
       message: "Select a project:",
-      choices: projects.map((p) => ({ name: p, value: p })),
+      choices: choices.map((p) => ({ name: p, value: p })),
     }),
   );
   if (answer === undefined) return; // User canceled
@@ -144,8 +146,9 @@ async function handleViewWorkItems(type: string | null) {
   const items = handleResult(itemsResult, "Failed to fetch work items.");
 
   if (items) {
-    userState.allWorkItems = items;
-    await handleRenderWorkItems(items);
+    const itemsArray = Array.isArray(items) ? items : [items];
+    userState.allWorkItems = itemsArray;
+    await handleRenderWorkItems(itemsArray);
   }
 }
 
@@ -174,10 +177,11 @@ async function handleChatMode() {
   }
 
   if (tasks) {
+    const tasksArray = Array.isArray(tasks) ? tasks : [tasks];
     const newTasks = await getAIResponse(
       answer,
       userState.selectedProject,
-      tasks,
+      tasksArray,
     );
 
     // console.log("handleChatMode -- ", newTasks.action);
@@ -198,6 +202,16 @@ async function handleChatMode() {
         );
         handleResult(updateWorkItemResult, "Failed to update work item.");
         break;
+      case "batch-update":
+        const batchUpdateWorkItemResult = await batchUpdateWorkItems(
+          userState.selectedProject,
+          newTasks.workItem.fields,
+        );
+        handleResult(
+          batchUpdateWorkItemResult,
+          "Failed to batch update work items.",
+        );
+        break;
       case "none":
         console.log(chalk.yellow("Sorry, I didn't understand."));
         break;
@@ -214,9 +228,13 @@ async function handleChatMode() {
       updatedTasksResult,
       "Failed to update tasks.",
     );
+    console.log("updatedTasks -- ", updatedTasks);
+    const updatedTasksArray = Array.isArray(updatedTasks)
+      ? updatedTasks
+      : [updatedTasks];
 
-    if (updatedTasks) {
-      await handleRenderWorkItems(updatedTasks);
+    if (updatedTasksArray) {
+      await handleRenderWorkItems(updatedTasksArray);
     }
   }
 }
