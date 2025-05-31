@@ -209,8 +209,6 @@ export async function updateWorkItem(
   fields: { [key: string]: any },
 ): Promise<DevOpsResult<any>> {
   const { azureOrganization, azurePat } = getConfig();
-  console.log("updateWorkItem -- ", project, id, fields);
-
   // Fetch the current work item to check for existing fields
   let existingFields: any = {};
   try {
@@ -253,8 +251,6 @@ export async function updateWorkItem(
     delete fields["System.Parent"];
   }
 
-  console.log("Patch body:", JSON.stringify(patchBody, null, 2));
-
   try {
     const response = await fetch(
       `https://dev.azure.com/${azureOrganization}/${project}/_apis/wit/workitems/${id}?api-version=6.0`,
@@ -278,7 +274,6 @@ export async function updateWorkItem(
     }
 
     const responseData = await response.json();
-    console.log("Update successful:", responseData);
     return { data: responseData };
   } catch (err) {
     console.error("Update error:", err);

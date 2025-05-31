@@ -180,7 +180,7 @@ async function handleChatMode() {
       tasks,
     );
 
-    console.log("handleChatMode -- ", newTasks.action);
+    // console.log("handleChatMode -- ", newTasks.action);
 
     switch (newTasks.action) {
       case "create":
