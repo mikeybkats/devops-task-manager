@@ -1,9 +1,13 @@
+import { WorkItemSchema, WorkItemFields } from "../services/devops";
+
 export interface WorkItem {
   id: number;
   title: string;
   state: string;
   assignedTo: string;
   type: string;
+  parent: string | null;
+  fields?: WorkItemFields;
   isNew?: boolean;
 }
 

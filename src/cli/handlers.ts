@@ -16,7 +16,7 @@ import {
   sendWorkItemsToRenderer,
 } from "./launcher";
 import { AuthService } from "../services/auth";
-import { getAIResponse } from "../services/ai";
+import { AIResponse, getAIResponse } from "../services/ai";
 import { WorkItem } from "../types";
 import { handleResult } from "../utils/result";
 import { getConfig } from "../config/env";
@@ -179,56 +179,55 @@ async function handleChatMode() {
 
   if (tasks) {
     const tasksArray = Array.isArray(tasks) ? tasks : [tasks];
-    const newTasks = await getAIResponse(
+    const newTasks: AIResponse = await getAIResponse(
       answer,
       userState.selectedProject,
       tasksArray,
     );
 
-    console.log("handleChatMode -- ", newTasks.action);
-
-    // switch (newTasks.action) {
-    //   case "create":
-    //     const workItemResult = await createWorkItem(
-    //       userState.selectedProject,
-    //       newTasks.workItem.fields,
-    //     );
-    //     handleResult(workItemResult, "Failed to create work item.");
-    //     break;
-    //   case "batch-create":
-    //     const batchCreateWorkItemResult = await batchCreateWorkItems(
-    //       userState.selectedProject,
-    //       newTasks.workItems,
-    //     );
-    //     handleResult(
-    //       batchCreateWorkItemResult,
-    //       "Failed to batch create work items.",
-    //     );
-    //     break;
-    //   case "update":
-    //     const updateWorkItemResult = await updateWorkItem(
-    //       userState.selectedProject,
-    //       newTasks.workItem.id,
-    //       newTasks.workItem.fields,
-    //     );
-    //     handleResult(updateWorkItemResult, "Failed to update work item.");
-    //     break;
-    //   case "batch-update":
-    //     const batchUpdateWorkItemResult = await batchUpdateWorkItems(
-    //       userState.selectedProject,
-    //       newTasks.workItem.fields,
-    //     );
-    //     handleResult(
-    //       batchUpdateWorkItemResult,
-    //       "Failed to batch update work items.",
-    //     );
-    //     break;
-    //   case "none":
-    //     console.log(chalk.yellow("Sorry, I didn't understand."));
-    //     break;
-    //   default:
-    //     break;
-    // }
+    switch (newTasks.action) {
+      case "create":
+        const workItemResult = await createWorkItem(
+          userState.selectedProject,
+          newTasks.workItems[0],
+        );
+        handleResult(workItemResult, "Failed to create work item.");
+        break;
+      case "batch-create":
+        console.log("batch-create -- newTasks.workItems", newTasks.workItems);
+        const batchCreateWorkItemResult = await batchCreateWorkItems(
+          userState.selectedProject,
+          newTasks.workItems,
+        );
+        handleResult(
+          batchCreateWorkItemResult,
+          "Failed to batch create work items.",
+        );
+        break;
+      case "update":
+        const updateWorkItemResult = await updateWorkItem(
+          userState.selectedProject,
+          newTasks.workItems[0].id,
+          newTasks.workItems[0],
+        );
+        handleResult(updateWorkItemResult, "Failed to update work item.");
+        break;
+      case "batch-update":
+        const batchUpdateWorkItemResult = await batchUpdateWorkItems(
+          userState.selectedProject,
+          newTasks.workItems,
+        );
+        handleResult(
+          batchUpdateWorkItemResult,
+          "Failed to batch update work items.",
+        );
+        break;
+      case "none":
+        console.log(chalk.yellow("Sorry, I didn't understand."));
+        break;
+      default:
+        break;
+    }
 
     const updatedTasksResult = await fetchWorkItems(
       userState.selectedProject,
@@ -239,12 +238,9 @@ async function handleChatMode() {
       updatedTasksResult,
       "Failed to update tasks.",
     );
-    const updatedTasksArray = Array.isArray(updatedTasks)
-      ? updatedTasks
-      : [updatedTasks];
 
-    if (updatedTasksArray) {
-      await handleRenderWorkItems(updatedTasksArray);
+    if (updatedTasks) {
+      await handleRenderWorkItems(updatedTasks as WorkItem[]);
     }
   }
 }

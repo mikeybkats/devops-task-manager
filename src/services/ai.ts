@@ -9,12 +9,22 @@ const anthropic = new Anthropic({
 
 const config = getConfig();
 
+export type AIResponse = {
+  action:
+    | "create"
+    | "update"
+    | "batch-update"
+    | "delete"
+    | "batch-create"
+    | "none";
+  workItems: WorkItem[];
+};
+
 export async function getAIResponse(
   userInput: string,
   project: string,
   tasks: WorkItem[],
-) {
-  console.log("getAIResponse -- ", userInput);
+): Promise<AIResponse> {
   const prompt = `
 You are an assistant for managing DevOps tasks. You must respond with ONLY a JSON object, no additional text or explanation.
 
@@ -148,9 +158,6 @@ Remember: Respond with ONLY the JSON object, no additional text or explanation.
     const repaired = jsonrepair(text);
     const parsed = JSON.parse(repaired);
 
-    console.log("AI Response text:", text);
-    console.log("Parsed response:", parsed);
-
     // Transform the response to match the expected format
     if (parsed.workItem) {
       // Find parent ID if parent title is provided
@@ -195,6 +202,13 @@ Remember: Respond with ONLY the JSON object, no additional text or explanation.
 
     if (parsed.action === "batch-update" && Array.isArray(parsed.workItems)) {
       parsed.workItems = parsed.workItems.map((item: any) => {
+        if (!item || typeof item !== "object") return;
+
+        const requiredFields = ["id", "title", "state", "type", "assignedTo"];
+        for (const field of requiredFields) {
+          if (!item[field]) return;
+        }
+
         // Find parent ID if parent title is provided
         let parentId = null;
         if (item.parent) {
@@ -228,6 +242,6 @@ Remember: Respond with ONLY the JSON object, no additional text or explanation.
     return parsed;
   } catch (error) {
     console.error("Error parsing AI response:", error);
-    return { action: "none", message: "Sorry, I didn't understand." };
+    return { action: "none", workItems: [] };
   }
 }

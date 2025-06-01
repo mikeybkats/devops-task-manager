@@ -1,5 +1,6 @@
 import { WorkItem } from "../types";
 import { getConfig } from "../config/env";
+import { WorkItemSchema } from "./devops";
 
 export type DevOpsResult<T> =
   | { data: T; error?: undefined }
@@ -11,28 +12,30 @@ export interface DevOpsProject {
   [key: string]: unknown;
 }
 
+export interface WorkItemFields {
+  "System.Title": string;
+  "System.State": string;
+  "System.WorkItemType": string;
+  "System.Parent": number | null;
+  "System.AssignedTo": {
+    displayName: string;
+    url: string;
+    _links: {
+      avatar: {
+        href: string;
+      };
+    };
+    id: string;
+    uniqueName: string;
+    imageUrl: string;
+    descriptor: string;
+  };
+}
+
 export interface WorkItemSchema {
   id: number;
   ref: number;
-  fields: {
-    "System.Title": string;
-    "System.State": string;
-    "System.WorkItemType": string;
-    "System.Parent": number | null;
-    "System.AssignedTo": {
-      displayName: string;
-      url: string;
-      _links: {
-        avatar: {
-          href: string;
-        };
-      };
-      id: string;
-      uniqueName: string;
-      imageUrl: string;
-      descriptor: string;
-    };
-  };
+  fields: WorkItemFields;
 }
 
 export async function fetchProjects(): Promise<DevOpsResult<string[]>> {
@@ -117,7 +120,7 @@ export async function fetchWorkItems(
       const detailsData: any = await detailsResponse.json();
       const detailsDataValue: WorkItemSchema[] = detailsData.value;
 
-      const items = detailsDataValue.map((item: WorkItemSchema) => {
+      const items: WorkItem[] = detailsDataValue.map((item: WorkItemSchema) => {
         let parentItemName = null;
         if (item.fields["System.Parent"]) {
           const parentItem = detailsDataValue.find(
@@ -137,6 +140,8 @@ export async function fetchWorkItems(
             item.fields["System.AssignedTo"]?.displayName || "Unassigned",
           type: item.fields["System.WorkItemType"] || "Other",
           parent: parentItemName,
+          fields: item.fields,
+          isNew: false,
         };
       });
 
@@ -150,32 +155,19 @@ export async function fetchWorkItems(
 
 export async function createWorkItem(
   project: string,
-  fields: { [key: string]: any },
+  fields: WorkItem,
 ): Promise<DevOpsResult<any>> {
   const { azureOrganization, azurePat } = getConfig();
-  const type = fields["System.WorkItemType"];
+  const type = fields.type;
 
   // Filter out null/undefined values
-  const patchBody = Object.entries(fields)
+  const patchBody = Object.entries(toWorkItemSchema(fields))
     .filter(([_, value]) => value !== null && value !== undefined)
     .map(([key, value]) => ({
       op: "add",
       path: `/fields/${key}`,
       value,
     }));
-
-  // Check for required fields
-  const requiredFields = [
-    "System.Title",
-    "System.WorkItemType",
-    "System.State",
-  ];
-  const missingFields = requiredFields.filter((f) => !fields[f]);
-  if (missingFields.length > 0) {
-    return {
-      error: `Failed to create work item: Missing required fields: ${missingFields.join(", ")}`,
-    };
-  }
 
   try {
     const response = await fetch(
@@ -206,7 +198,7 @@ export async function createWorkItem(
 export async function updateWorkItem(
   project: string,
   id: number,
-  fields: { [key: string]: any },
+  workItem: WorkItem,
 ): Promise<DevOpsResult<any>> {
   const { azureOrganization, azurePat } = getConfig();
   // Fetch the current work item to check for existing fields
@@ -230,7 +222,7 @@ export async function updateWorkItem(
   }
 
   // Build patch body with correct op
-  const patchBody = Object.entries(fields)
+  const patchBody = Object.entries(workItem)
     .filter(([_, value]) => value !== undefined)
     .map(([key, value]) => ({
       op: key in existingFields ? "replace" : "add",
@@ -238,17 +230,17 @@ export async function updateWorkItem(
       value,
     }));
 
-  if (fields["System.Parent"]) {
+  if (workItem.parent) {
     patchBody.push({
       op: "add",
       path: "/relations/-",
       value: {
         rel: "System.LinkTypes.Hierarchy-Reverse",
-        url: `https://dev.azure.com/${azureOrganization}/${project}/_apis/wit/workItems/${fields["System.Parent"]}`,
+        url: `https://dev.azure.com/${azureOrganization}/${project}/_apis/wit/workItems/${workItem.parent}`,
       },
     });
     // Optionally, delete the System.Parent field from fields so it doesn't get sent as a field
-    delete fields["System.Parent"];
+    delete workItem.parent;
   }
 
   try {
@@ -283,19 +275,48 @@ export async function updateWorkItem(
 
 export async function batchUpdateWorkItems(
   project: string,
-  updates: { id: number; fields: { [key: string]: any } }[],
+  updates: WorkItem[],
 ): Promise<DevOpsResult<any>[]> {
   // You can use Promise.all to run updates in parallel
   return Promise.all(
-    updates.map((update) => updateWorkItem(project, update.id, update.fields)),
+    updates.map((update) => updateWorkItem(project, update.id, update)),
   );
 }
 
 export async function batchCreateWorkItems(
   project: string,
-  updates: { id: number; fields: { [key: string]: any } }[],
-): Promise<DevOpsResult<any>[]> {
-  return Promise.all(
-    updates.map((update) => createWorkItem(project, update.fields)),
-  );
+  updates: WorkItem[],
+): Promise<DevOpsResult<WorkItem>[]> {
+  return Promise.all(updates.map((update) => createWorkItem(project, update)));
+}
+
+export function toWorkItemSchema(item: WorkItem): WorkItemSchema {
+  // If the item already has a full fields object, use it directly
+  if (item.fields) {
+    return {
+      id: item.id,
+      ref: 0,
+      fields: item.fields,
+    };
+  }
+  // Otherwise, build fields from the flat properties
+  return {
+    id: item.id,
+    ref: 0,
+    fields: {
+      "System.Title": item.title,
+      "System.State": item.state,
+      "System.WorkItemType": item.type,
+      "System.Parent": null,
+      "System.AssignedTo": {
+        displayName: item.assignedTo,
+        url: "",
+        _links: { avatar: { href: "" } },
+        id: "",
+        uniqueName: item.assignedTo,
+        imageUrl: "",
+        descriptor: "",
+      },
+    },
+  };
 }

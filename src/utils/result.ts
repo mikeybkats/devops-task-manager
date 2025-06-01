@@ -1,6 +1,6 @@
 import chalk from "chalk"; // Optional: for colored CLI output
 
-type Result<T> = {
+export type Result<T> = {
   data?: T | T[];
   error?: string;
 };
