@@ -1,6 +1,5 @@
 import { WorkItem } from "../types";
 import { getConfig } from "../config/env";
-import { WorkItemSchema } from "./devops";
 
 export type DevOpsResult<T> =
   | { data: T; error?: undefined }
@@ -12,30 +11,10 @@ export interface DevOpsProject {
   [key: string]: unknown;
 }
 
-export interface WorkItemFields {
-  "System.Title": string;
-  "System.State": string;
-  "System.WorkItemType": string;
-  "System.Parent": number | null;
-  "System.AssignedTo": {
-    displayName: string;
-    url: string;
-    _links: {
-      avatar: {
-        href: string;
-      };
-    };
-    id: string;
-    uniqueName: string;
-    imageUrl: string;
-    descriptor: string;
-  };
-}
-
 export interface WorkItemSchema {
   id: number;
   ref: number;
-  fields: WorkItemFields;
+  fields: any;
 }
 
 export async function fetchProjects(): Promise<DevOpsResult<string[]>> {
@@ -230,7 +209,7 @@ export async function updateWorkItem(
       value,
     }));
 
-  if (workItem.parent) {
+  if (workItem.parent !== undefined) {
     patchBody.push({
       op: "add",
       path: "/relations/-",
@@ -239,8 +218,6 @@ export async function updateWorkItem(
         url: `https://dev.azure.com/${azureOrganization}/${project}/_apis/wit/workItems/${workItem.parent}`,
       },
     });
-    // Optionally, delete the System.Parent field from fields so it doesn't get sent as a field
-    delete workItem.parent;
   }
 
   try {
