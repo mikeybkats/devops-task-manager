@@ -135,12 +135,14 @@ export async function fetchWorkItems(
 export async function createWorkItem(
   project: string,
   fields: WorkItem,
+  allTasks?: WorkItem[],
 ): Promise<DevOpsResult<any>> {
   const { azureOrganization, azurePat } = getConfig();
   const type = fields.type;
 
-  // Filter out null/undefined values
-  const patchBody = Object.entries(toWorkItemSchema(fields))
+  // Use toWorkItemSchema to get the correct fields object
+  const schema = toWorkItemSchema(fields, allTasks);
+  const patchBody = Object.entries(schema.fields)
     .filter(([_, value]) => value !== null && value !== undefined)
     .map(([key, value]) => ({
       op: "add",
@@ -178,6 +180,7 @@ export async function updateWorkItem(
   project: string,
   id: number,
   workItem: WorkItem,
+  allTasks?: WorkItem[],
 ): Promise<DevOpsResult<any>> {
   const { azureOrganization, azurePat } = getConfig();
   // Fetch the current work item to check for existing fields
@@ -200,8 +203,9 @@ export async function updateWorkItem(
     console.warn("Could not fetch current work item for patch type detection.");
   }
 
-  // Build patch body with correct op
-  const patchBody = Object.entries(workItem)
+  // Use toWorkItemSchema to get the correct fields object
+  const schema = toWorkItemSchema(workItem, allTasks);
+  const patchBody = Object.entries(schema.fields)
     .filter(([_, value]) => value !== undefined)
     .map(([key, value]) => ({
       op: key in existingFields ? "replace" : "add",
@@ -267,16 +271,32 @@ export async function batchCreateWorkItems(
   return Promise.all(updates.map((update) => createWorkItem(project, update)));
 }
 
-export function toWorkItemSchema(item: WorkItem): WorkItemSchema {
-  // If the item already has a full fields object, use it directly
+export function toWorkItemSchema(
+  item: WorkItem,
+  allTasks?: WorkItem[],
+): WorkItemSchema {
+  // Resolve parent ID if parent is a string (title)
+  let parentId: number | null = null;
+  if (item.parent && allTasks) {
+    const parentTask = allTasks.find((t) => t.title === item.parent);
+    if (parentTask) parentId = parentTask.id;
+  } else if (typeof item.parent === "number") {
+    parentId = item.parent;
+  }
+
+  // Use fields if present, but override System.Parent with the resolved ID
   if (item.fields) {
     return {
       id: item.id,
       ref: 0,
-      fields: item.fields,
+      fields: {
+        ...item.fields,
+        "System.Parent": parentId,
+      },
     };
   }
-  // Otherwise, build fields from the flat properties
+
+  // Otherwise, build fields from flat properties
   return {
     id: item.id,
     ref: 0,
@@ -284,7 +304,7 @@ export function toWorkItemSchema(item: WorkItem): WorkItemSchema {
       "System.Title": item.title,
       "System.State": item.state,
       "System.WorkItemType": item.type,
-      "System.Parent": null,
+      "System.Parent": parentId,
       "System.AssignedTo": {
         displayName: item.assignedTo,
         url: "",
