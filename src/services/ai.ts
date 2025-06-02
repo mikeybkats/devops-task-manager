@@ -73,6 +73,8 @@ Important rules:
 - Always use "action": "batch-create" and return a "workItems" array for batch creation.
 - Use the parent, assignedTo, and other fields as specified by the user or as appropriate for each task.
 - Do not limit the batch to only the items explicitly mentioned by the user if the intent is to cover a whole category.
+- When the user mentions a parent task by title (e.g., "parent is the 'Should contain all standard form controls' user story"), you MUST look up that task's ID in the user's tasks list and use that ID as the parent value.
+- For batch creation, if a parent is specified, ALL items in the batch should use that parent ID.
 
 Example of a valid response for creating a new task:
 {
@@ -100,42 +102,28 @@ Example of a valid response for updating a task's parent:
   }
 }
 
-Example of a valid response for creating a batch of work items:
-{
-  "action": "batch-update",
-  "workItems": [
-    {
-      "id": 16,
-      "title": "Add a docs mdx page",
-      "state": "New",
-      "assignedTo": "michael barakat",
-      "type": "Task",
-      "parent": 20
-    },
-    {
-      "id": 17,
-      "title": "Add a docs mdx page",
-      "state": "New",
-      "assignedTo": "michael barakat",
-      "type": "Task",
-      "parent": 20
-    }
-  ]
-}
-
-Example of a valid response for creating a batch of work items:
+Example of a valid response for creating a batch of work items with a parent:
 {
   "action": "batch-create",
   "workItems": [
-    { "title": "Checkbox - web component", "state": "New", "assignedTo": "user@example.com", "type": "Task", "parent": null },
-    // ...etc, for all items in the category
+    {
+      "id": 0,
+      "title": "Text Input - web component",
+      "state": "New",
+      "assignedTo": "michael barakat",
+      "type": "Task",
+      "parent": 123  // ID of the parent task found in user's tasks list
+    },
+    {
+      "id": 0,
+      "title": "Select - web component",
+      "state": "New",
+      "assignedTo": "michael barakat",
+      "type": "Task",
+      "parent": 123  // Same parent ID for all items in batch
+    }
   ]
 }
-
-- Only use the parent ID exactly as it appears in the user's tasks list.
-- Do not create storybook pages unless the user specifically asks for them.
-- Always output a batch if the user asks for multiple items.
-- Use the user's email for assignedTo if provided, otherwise use the default.
 
 If the user does not specify who to assign the task to, then default to the first azure user from .env file users: ${config.azureUsers}.
 
@@ -225,6 +213,44 @@ Remember: Respond with ONLY the JSON object, no additional text or explanation.
             "System.State": item.state,
             "System.WorkItemType": item.type,
             "System.Parent": parentId,
+            "System.AssignedTo": {
+              displayName: item.assignedTo,
+              url: "",
+              _links: { avatar: { href: "" } },
+              id: "",
+              uniqueName: item.assignedTo,
+              imageUrl: "",
+              descriptor: "",
+            },
+          },
+        };
+      });
+    }
+
+    // Add handling for batch-create
+    if (parsed.action === "batch-create" && Array.isArray(parsed.workItems)) {
+      // First, find the parent task ID if specified in the prompt
+      let parentId = null;
+      const parentTaskMatch = userInput.match(/parent is the "([^"]+)"/);
+      if (parentTaskMatch) {
+        const parentTitle = parentTaskMatch[1];
+        const parentTask = tasks.find((task) => task.title === parentTitle);
+        if (parentTask) {
+          parentId = parentTask.id;
+        }
+      }
+
+      parsed.workItems = parsed.workItems.map((item: any) => {
+        if (!item || typeof item !== "object") return;
+
+        return {
+          id: 0, // New items get ID 0
+          ref: 0,
+          fields: {
+            "System.Title": item.title,
+            "System.State": item.state || "New",
+            "System.WorkItemType": "Task", // Always set to "Task" for new items
+            "System.Parent": parentId, // Use the parent ID we found
             "System.AssignedTo": {
               displayName: item.assignedTo,
               url: "",

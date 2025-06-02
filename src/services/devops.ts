@@ -132,13 +132,49 @@ export async function fetchWorkItems(
   }
 }
 
+function createParentRelationPatch(
+  project: string,
+  parentId: number | null,
+  existingRelations: any[] = [],
+): { op: string; path: string; value: unknown }[] {
+  const { azureOrganization } = getConfig();
+  const patchOperations: { op: string; path: string; value: unknown }[] = [];
+
+  // Remove any existing parent relationships
+  const parentRelations = existingRelations.filter(
+    (rel) => rel.rel === "System.LinkTypes.Hierarchy-Reverse",
+  );
+
+  parentRelations.forEach((rel) => {
+    patchOperations.push({
+      op: "remove",
+      path: `/relations/${existingRelations.indexOf(rel)}`,
+      value: null, // Required by the type but not used for remove operations
+    });
+  });
+
+  // Add new parent relationship if parentId exists
+  if (parentId) {
+    patchOperations.push({
+      op: "add",
+      path: "/relations/-",
+      value: {
+        rel: "System.LinkTypes.Hierarchy-Reverse",
+        url: `https://dev.azure.com/${azureOrganization}/${project}/_apis/wit/workItems/${parentId}`,
+      },
+    });
+  }
+
+  return patchOperations;
+}
+
 export async function createWorkItem(
   project: string,
   fields: WorkItem,
   allTasks?: WorkItem[],
 ): Promise<DevOpsResult<any>> {
   const { azureOrganization, azurePat } = getConfig();
-  const type = fields.type;
+  const type = fields.type || "Task"; // Default to "Task" if type is not specified
 
   // Use toWorkItemSchema to get the correct fields object
   const schema = toWorkItemSchema(fields, allTasks);
@@ -149,6 +185,15 @@ export async function createWorkItem(
       path: `/fields/${key}`,
       value,
     }));
+
+  // Add parent relation if parent ID exists
+  if (schema.fields["System.Parent"]) {
+    patchBody.push(
+      ...createParentRelationPatch(project, schema.fields["System.Parent"]),
+    );
+  }
+
+  console.log("createWorkItem -- patchBody: ", patchBody);
 
   try {
     const response = await fetch(
@@ -185,6 +230,7 @@ export async function updateWorkItem(
   const { azureOrganization, azurePat } = getConfig();
   // Fetch the current work item to check for existing fields
   let existingFields: any = {};
+  let existingRelations: any[] = [];
   try {
     const currentResponse = await fetch(
       `https://dev.azure.com/${azureOrganization}/${project}/_apis/wit/workitems/${id}?api-version=6.0`,
@@ -198,6 +244,7 @@ export async function updateWorkItem(
     if (currentResponse.ok) {
       const currentData = await currentResponse.json();
       existingFields = currentData.fields || {};
+      existingRelations = currentData.relations || [];
     }
   } catch (err) {
     console.warn("Could not fetch current work item for patch type detection.");
@@ -213,16 +260,18 @@ export async function updateWorkItem(
       value,
     }));
 
+  // Handle parent relationship
   if (workItem.parent !== undefined) {
-    patchBody.push({
-      op: "add",
-      path: "/relations/-",
-      value: {
-        rel: "System.LinkTypes.Hierarchy-Reverse",
-        url: `https://dev.azure.com/${azureOrganization}/${project}/_apis/wit/workItems/${workItem.parent}`,
-      },
-    });
+    patchBody.push(
+      ...createParentRelationPatch(
+        project,
+        schema.fields["System.Parent"],
+        existingRelations,
+      ),
+    );
   }
+
+  console.log("updateWorkItem -- patchBody: ", patchBody);
 
   try {
     const response = await fetch(
@@ -275,45 +324,70 @@ export function toWorkItemSchema(
   item: WorkItem,
   allTasks?: WorkItem[],
 ): WorkItemSchema {
+  console.log("toWorkItemSchema -- item: ", item);
   // Resolve parent ID if parent is a string (title)
   let parentId: number | null = null;
-  if (item.parent && allTasks) {
-    const parentTask = allTasks.find((t) => t.title === item.parent);
-    if (parentTask) parentId = parentTask.id;
-  } else if (typeof item.parent === "number") {
-    parentId = item.parent;
+  if (item.parent) {
+    if (typeof item.parent === "string") {
+      // If parent is a string (title), look up the ID
+      const parentTask = allTasks?.find((t) => t.title === item.parent);
+      if (parentTask) parentId = parentTask.id;
+    } else if (typeof item.parent === "number") {
+      // If parent is already a number (ID), use it directly
+      parentId = item.parent;
+    }
   }
 
   // Use fields if present, but override System.Parent with the resolved ID
   if (item.fields) {
+    const fields: Record<string, any> = {
+      ...item.fields,
+    };
+    // Only add System.Parent if we have a valid parentId
+    if (parentId !== null) {
+      fields["System.Parent"] = parentId;
+    }
+    // Remove null/undefined fields
+    Object.keys(fields).forEach((key) => {
+      if (fields[key] === null || fields[key] === undefined) {
+        delete fields[key];
+      }
+    });
     return {
       id: item.id,
       ref: 0,
-      fields: {
-        ...item.fields,
-        "System.Parent": parentId,
-      },
+      fields,
     };
   }
 
   // Otherwise, build fields from flat properties
+  const fields: Record<string, any> = {
+    "System.Title": item.title,
+    "System.State": item.state,
+    "System.WorkItemType": item.type,
+    "System.AssignedTo": {
+      displayName: item.assignedTo,
+      url: "",
+      _links: { avatar: { href: "" } },
+      id: "",
+      uniqueName: item.assignedTo,
+      imageUrl: "",
+      descriptor: "",
+    },
+  };
+  // Only add System.Parent if we have a valid parentId
+  if (parentId !== null) {
+    fields["System.Parent"] = parentId;
+  }
+  // Remove null/undefined fields
+  Object.keys(fields).forEach((key) => {
+    if (fields[key] === null || fields[key] === undefined) {
+      delete fields[key];
+    }
+  });
   return {
     id: item.id,
     ref: 0,
-    fields: {
-      "System.Title": item.title,
-      "System.State": item.state,
-      "System.WorkItemType": item.type,
-      "System.Parent": parentId,
-      "System.AssignedTo": {
-        displayName: item.assignedTo,
-        url: "",
-        _links: { avatar: { href: "" } },
-        id: "",
-        uniqueName: item.assignedTo,
-        imageUrl: "",
-        descriptor: "",
-      },
-    },
+    fields,
   };
 }

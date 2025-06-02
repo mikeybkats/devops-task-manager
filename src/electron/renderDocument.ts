@@ -4,11 +4,14 @@ const cssStyles = /* css */ `
     font-family: sans-serif; 
     background: #f6f8fa; 
     margin: 0; 
-    padding: 24px; 
+    padding: 0; 
   }
   .container { 
     max-width: 1200px; 
-    margin: 32px auto; 
+    margin: 0 auto; 
+  }
+  .content {
+    padding: 24px;
   }
   .grid { 
     display: flex; 
@@ -28,13 +31,21 @@ function renderDocument() {
   // Create and append container and grid
   const container = document.createElement("div");
   container.className = "container";
+
+  const content = document.createElement("div");
+  content.id = "content";
+  content.className = "content";
+
   const heading = document.createElement("h1");
   heading.textContent = "DevOps Work Items";
+
   const grid = document.createElement("div");
   grid.id = "grid";
   grid.className = "grid";
-  container.appendChild(heading);
-  container.appendChild(grid);
+
+  content.appendChild(heading);
+  content.appendChild(grid);
+  container.appendChild(content);
   document.body.appendChild(container);
 }
 

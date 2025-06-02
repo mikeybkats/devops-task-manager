@@ -4,8 +4,8 @@ export interface WorkItem {
   state: string;
   assignedTo: string;
   type: string;
-  parent: string | null;
-  fields?: any;
+  parent: number | string | null;
+  fields?: Record<string, any>;
   isNew?: boolean;
 }
 
