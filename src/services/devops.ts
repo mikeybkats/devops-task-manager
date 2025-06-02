@@ -193,8 +193,6 @@ export async function createWorkItem(
     );
   }
 
-  console.log("createWorkItem -- patchBody: ", patchBody);
-
   try {
     const response = await fetch(
       `https://dev.azure.com/${azureOrganization}/${project}/_apis/wit/workitems/$${type}?api-version=6.0`,
@@ -271,8 +269,6 @@ export async function updateWorkItem(
     );
   }
 
-  console.log("updateWorkItem -- patchBody: ", patchBody);
-
   try {
     const response = await fetch(
       `https://dev.azure.com/${azureOrganization}/${project}/_apis/wit/workitems/${id}?api-version=6.0`,
@@ -324,7 +320,6 @@ export function toWorkItemSchema(
   item: WorkItem,
   allTasks?: WorkItem[],
 ): WorkItemSchema {
-  console.log("toWorkItemSchema -- item: ", item);
   // Resolve parent ID if parent is a string (title)
   let parentId: number | null = null;
   if (item.parent) {
@@ -390,4 +385,41 @@ export function toWorkItemSchema(
     ref: 0,
     fields,
   };
+}
+
+export async function deleteWorkItem(
+  project: string,
+  id: number,
+): Promise<DevOpsResult<any>> {
+  const { azureOrganization, azurePat } = getConfig();
+  try {
+    const response = await fetch(
+      `https://dev.azure.com/${azureOrganization}/${project}/_apis/wit/workitems/${id}?api-version=6.0`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Basic ${Buffer.from(`:${azurePat}`).toString("base64")}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        error: `Failed to delete work item: ${response.statusText} - ${errorText}`,
+      };
+    }
+
+    return { data: { id, deleted: true } };
+  } catch (err) {
+    return { error: (err as Error).message };
+  }
+}
+
+export async function batchDeleteWorkItems(
+  project: string,
+  ids: number[],
+): Promise<DevOpsResult<any>[]> {
+  return Promise.all(ids.map((id) => deleteWorkItem(project, id)));
 }

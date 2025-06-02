@@ -13,9 +13,10 @@ export type AIResponse = {
   action:
     | "create"
     | "update"
-    | "batch-update"
     | "delete"
     | "batch-create"
+    | "batch-update"
+    | "batch-delete"
     | "none";
   workItems: WorkItem[];
 };
@@ -36,7 +37,7 @@ The user is trying to create, update or delete a work item. The user may want to
 
 You must respond with ONLY a JSON object in this exact format:
 
-{ "action": "create" | "update" | "batch-update" | "delete" | "batch-create", "workItem": WorkItemSchema }
+{ "action": "create" | "update" | "batch-update" | "delete" | "batch-create" | "batch-delete" | "none", "workItems": WorkItemSchema[] }
 
 The work item must be in this exact format:
 
@@ -53,11 +54,15 @@ Important rules:
 - If the user wants to change a task's parent, this is an "update" action
 - If the user wants to create a new task, this is a "create" action
 - If the user wants to delete a task, this is a "delete" action
+- If the user wants to delete multiple tasks, this is a "batch-delete" action
 - When updating a task's parent, you must include all existing fields of the task
 - The parent field should be the ID of the parent work item, not its title
 - The parent id can be obtained from the user's tasks list, you must interpret the user's input to find the parent id.
 - For new tasks, set state to "New"
 - For new tasks, set type to "Task" unless specified otherwise
+- For deletion actions, you only need to include the id and title fields
+- When deleting multiple tasks, use "batch-delete" and include all tasks to be deleted in the workItems array
+- If the user mentions "duplicates" or "duplicate tasks", look for tasks with similar titles and use "batch-delete"
 - DO NOT include any text before or after the JSON object
 - DO NOT explain your response
 - DO NOT use markdown formatting
@@ -79,27 +84,27 @@ Important rules:
 Example of a valid response for creating a new task:
 {
   "action": "create",
-  "workItem": {
+  "workItems": [{
     "id": 0,
     "title": "Add dark mode support",
     "state": "New",
     "assignedTo": "michael barakat",
     "type": "Task",
     "parent": null
-  }
+  }]
 }
 
 Example of a valid response for updating a task's parent:
 {
   "action": "update",
-  "workItem": {
+  "workItems": [{
     "id": 16,
     "title": "Add a docs mdx page",
     "state": "New",
     "assignedTo": "michael barakat",
     "type": "Task",
     "parent": 11 
-  }
+  }]
 }
 
 Example of a valid response for creating a batch of work items with a parent:
@@ -125,10 +130,45 @@ Example of a valid response for creating a batch of work items with a parent:
   ]
 }
 
+Example of a valid response for deleting a task:
+{
+  "action": "delete",
+  "workItems": [{
+    "id": 123,
+    "title": "Task to delete",
+    "state": "",
+    "assignedTo": "",
+    "type": "",
+    "parent": null
+  }]
+}
+
+Example of a valid response for batch deleting tasks:
+{
+  "action": "batch-delete",
+  "workItems": [
+    {
+      "id": 123,
+      "title": "Duplicate task 1",
+      "state": "",
+      "assignedTo": "",
+      "type": "",
+      "parent": null
+    },
+    {
+      "id": 124,
+      "title": "Duplicate task 2",
+      "state": "",
+      "assignedTo": "",
+      "type": "",
+      "parent": null
+    }
+  ]
+}
+
 If the user does not specify who to assign the task to, then default to the first azure user from .env file users: ${config.azureUsers}.
 
 Remember: Respond with ONLY the JSON object, no additional text or explanation.
-
 `;
 
   const response = await anthropic.messages.create({

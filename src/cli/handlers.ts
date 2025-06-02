@@ -9,6 +9,8 @@ import {
   updateWorkItem,
   batchUpdateWorkItems,
   batchCreateWorkItems,
+  deleteWorkItem,
+  batchDeleteWorkItems,
 } from "../services/devops";
 import {
   createElectronWindow,
@@ -185,6 +187,8 @@ async function handleChatMode() {
       tasksArray,
     );
 
+    console.log("newTasks -- task action", newTasks.action, newTasks.workItems);
+
     switch (newTasks.action) {
       case "create":
         const workItemResult = await createWorkItem(
@@ -194,7 +198,6 @@ async function handleChatMode() {
         handleResult(workItemResult, "Failed to create work item.");
         break;
       case "batch-create":
-        console.log("batch-create -- newTasks.workItems", newTasks.workItems);
         const batchCreateWorkItemResult = await batchCreateWorkItems(
           userState.selectedProject,
           newTasks.workItems,
@@ -220,6 +223,23 @@ async function handleChatMode() {
         handleResult(
           batchUpdateWorkItemResult,
           "Failed to batch update work items.",
+        );
+        break;
+      case "delete":
+        const deleteWorkItemResult = await deleteWorkItem(
+          userState.selectedProject,
+          newTasks.workItems[0].id,
+        );
+        handleResult(deleteWorkItemResult, "Failed to delete work item.");
+        break;
+      case "batch-delete":
+        const batchDeleteWorkItemResult = await batchDeleteWorkItems(
+          userState.selectedProject,
+          newTasks.workItems.map((item) => item.id),
+        );
+        handleResult(
+          batchDeleteWorkItemResult,
+          "Failed to batch delete work items.",
         );
         break;
       case "none":
