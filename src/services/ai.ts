@@ -62,7 +62,14 @@ Important rules:
 - For new tasks, set type to "Task" unless specified otherwise
 - For deletion actions, you only need to include the id and title fields
 - When deleting multiple tasks, use "batch-delete" and include all tasks to be deleted in the workItems array
-- If the user mentions "duplicates" or "duplicate tasks", look for tasks with similar titles and use "batch-delete"
+- For duplicate detection:
+  - Consider tasks as duplicates if they have semantically similar titles (e.g., "Add dark mode" and "Implement dark mode" are duplicates)
+  - Consider tasks as duplicates if they have overlapping key terms with similar meaning (e.g., "Create login page" and "Add login screen" are duplicates)
+  - Do not consider tasks as duplicates if they are different types of tasks
+  - When deleting duplicates, keep the oldest task (lowest ID) and delete the newer ones
+  - If a task's title is unique (no similar titles exist), it should NOT be included in the deletion list
+  - If there are no duplicates found, return an empty workItems array with "batch-delete" action
+  - Be conservative in duplicate detection - if unsure, do not mark as duplicate
 - DO NOT include any text before or after the JSON object
 - DO NOT explain your response
 - DO NOT use markdown formatting
@@ -143,27 +150,33 @@ Example of a valid response for deleting a task:
   }]
 }
 
-Example of a valid response for batch deleting tasks:
+Example of a valid response for batch deleting duplicate tasks:
 {
   "action": "batch-delete",
   "workItems": [
     {
-      "id": 123,
-      "title": "Duplicate task 1",
+      "id": 124,
+      "title": "Add dark mode support",
       "state": "",
       "assignedTo": "",
       "type": "",
       "parent": null
     },
     {
-      "id": 124,
-      "title": "Duplicate task 2",
+      "id": 125,
+      "title": "Implement dark mode feature",
       "state": "",
       "assignedTo": "",
       "type": "",
       "parent": null
     }
   ]
+}
+
+Example of a valid response when no duplicates are found:
+{
+  "action": "batch-delete",
+  "workItems": []
 }
 
 If the user does not specify who to assign the task to, then default to the first azure user from .env file users: ${config.azureUsers}.
